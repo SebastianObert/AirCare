@@ -1,20 +1,29 @@
 package com.example.aircare
 
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import com.example.aircare.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
+
+    // 1. Deklarasikan variabel binding
+    private lateinit var binding: ActivityMainBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContentView(R.layout.activity_main)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+
+        // 2. Inisialisasi binding
+        binding = ActivityMainBinding.inflate(layoutInflater)
+
+        // 3. Set content view menggunakan root dari binding
+        setContentView(binding.root)
+
+        binding.tvLocation.text = "Tangerang, Indonesia"
+        binding.tvAqiValue.text = "75"
+        binding.tvAqiStatus.text = "Sedang"
+
+        binding.btnSave.setOnClickListener {
+            binding.tvLocation.text = "Data Tersimpan!"
         }
     }
 }
