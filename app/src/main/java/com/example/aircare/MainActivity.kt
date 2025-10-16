@@ -2,6 +2,8 @@ package com.example.aircare
 
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.ui.setupWithNavController
 import com.example.aircare.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -10,17 +12,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         binding = ActivityMainBinding.inflate(layoutInflater)
-
         setContentView(binding.root)
 
-        binding.tvLocation.text = "Tangerang, Indonesia"
-        binding.tvAqiValue.text = "75"
-        binding.tvAqiStatus.text = "Sedang"
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        val navController = navHostFragment.navController
 
-        binding.btnSave.setOnClickListener {
-            binding.tvLocation.text = "Data Tersimpan!"
-        }
+        binding.bottomNavigation.setupWithNavController(navController)
     }
 }
