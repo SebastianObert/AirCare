@@ -6,6 +6,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainViewModel : ViewModel() {
 
@@ -13,6 +15,9 @@ class MainViewModel : ViewModel() {
 
     private val _location = MutableLiveData("Mencari lokasi...")
     val location: LiveData<String> = _location
+
+    private val _lastUpdated = MutableLiveData("")
+    val lastUpdated: LiveData<String> = _lastUpdated
 
     private val _aqiValue = MutableLiveData("--")
     val aqiValue: LiveData<String> = _aqiValue
@@ -23,40 +28,107 @@ class MainViewModel : ViewModel() {
     private val _aqiStatusBackground = MutableLiveData<Int>()
     val aqiStatusBackground: LiveData<Int> = _aqiStatusBackground
 
-    private val _pm25Value = MutableLiveData<String>("-- µg/m³")
+    private val _aqiIndicatorPosition = MutableLiveData(0.0f)
+    val aqiIndicatorPosition: LiveData<Float> = _aqiIndicatorPosition
+
+    private val _recommendationIcon = MutableLiveData<Int>()
+    val recommendationIcon: LiveData<Int> = _recommendationIcon
+
+    private val _recommendationText = MutableLiveData("Dapatkan lokasi Anda untuk melihat rekomendasi.")
+    val recommendationText: LiveData<String> = _recommendationText
+
+    private val _pm25Value = MutableLiveData("-- µg/m³")
     val pm25Value: LiveData<String> = _pm25Value
-
-    private val _coValue = MutableLiveData<String>("-- µg/m³")
+    private val _coValue = MutableLiveData("-- µg/m³")
     val coValue: LiveData<String> = _coValue
-
+    private val _o3Value = MutableLiveData("-- µg/m³")
+    val o3Value: LiveData<String> = _o3Value
+    private val _no2Value = MutableLiveData("-- µg/m³")
+    val no2Value: LiveData<String> = _no2Value
+    private val _so2Value = MutableLiveData("-- µg/m³")
+    val so2Value: LiveData<String> = _so2Value
 
     fun updateLocationAndFetchData(latitude: Double, longitude: Double) {
-        val locationString = String.format("Lat: %.2f, Lon: %.2f", latitude, longitude)
-        _location.value = locationString
+        _location.value = String.format("Lat: %.2f, Lon: %.2f", latitude, longitude)
         _aqiStatus.value = "Mengambil data..."
 
         viewModelScope.launch {
             try {
                 val response = ApiClient.instance.getAirPollution(latitude, longitude, apiKey)
                 if (response.list.isNotEmpty()) {
-                    val airData = response.list[0]
-                    val aqi = airData.main.aqi
-
-                    _aqiValue.value = convertAqiValueToString(aqi)
-                    _aqiStatus.value = convertAqiToStatus(aqi)
-                    _aqiStatusBackground.value = convertAqiToDrawable(aqi)
-
-                    val components = airData.components
-                    _pm25Value.value = "${components.pm2_5} µg/m³"
-                    _coValue.value = "${components.co} µg/m³"
-
+                    processApiResponse(response.list[0])
                 } else {
-                    _aqiStatus.value = "Data tidak tersedia"
+                    showError("Data tidak tersedia")
                 }
             } catch (e: Exception) {
                 Log.e("AirCareAPI", "Gagal memanggil API: ${e.message}", e)
-                _aqiStatus.value = "Gagal memuat data"
+                showError("Gagal memuat data")
             }
+        }
+    }
+
+    private fun processApiResponse(airData: AirData) {
+        val aqi = airData.main.aqi
+
+        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+        _lastUpdated.value = "Diperbarui: ${sdf.format(Date())}"
+
+        _aqiValue.value = convertAqiValueToString(aqi)
+        _aqiStatus.value = convertAqiToStatus(aqi)
+        _aqiStatusBackground.value = convertAqiToDrawable(aqi)
+
+        _aqiIndicatorPosition.value = convertAqiToIndicatorPosition(aqi)
+        _recommendationIcon.value = getRecommendationIcon(aqi)
+        _recommendationText.value = getHealthRecommendation(aqi)
+
+        val components = airData.components
+        _pm25Value.value = "${components.pm2_5} µg/m³"
+        _coValue.value = "${components.co} µg/m³"
+        _o3Value.value = "${components.o3} µg/m³"
+        _no2Value.value = "${components.no2} µg/m³"
+        _so2Value.value = "${components.so2} µg/m³"
+    }
+
+    private fun showError(message: String) {
+        _aqiStatus.value = message
+        _aqiValue.value = "--"
+        _lastUpdated.value = ""
+        _recommendationText.value = "Tidak dapat memuat rekomendasi."
+        _pm25Value.value = "-- µg/m³"
+        _coValue.value = "-- µg/m³"
+        _o3Value.value = "-- µg/m³"
+        _no2Value.value = "-- µg/m³"
+        _so2Value.value = "-- µg/m³"
+    }
+
+    private fun convertAqiToIndicatorPosition(aqi: Int): Float {
+        return when (aqi) {
+            1 -> 0.1f   // 10% dari kiri
+            2 -> 0.3f   // 30%
+            3 -> 0.5f   // 50% (tengah)
+            4 -> 0.7f   // 70%
+            5 -> 0.9f   // 90%
+            else -> 0.5f
+        }
+    }
+
+    private fun getHealthRecommendation(aqi: Int): String {
+        return when (aqi) {
+            1 -> "Kualitas udara sangat baik. Waktu yang tepat untuk aktivitas di luar ruangan."
+            2 -> "Kualitas udara cukup baik. Nikmati harimu!"
+            3 -> "Kurangi aktivitas berat di luar ruangan jika Anda memiliki sensitivitas pernapasan."
+            4 -> "Udara tidak sehat. Batasi waktu di luar dan pertimbangkan menggunakan masker."
+            5 -> "Sangat tidak sehat. Hindari semua aktivitas di luar ruangan jika memungkinkan."
+            else -> "Data tidak tersedia."
+        }
+    }
+
+    private fun getRecommendationIcon(aqi: Int): Int {
+        return when (aqi) {
+            1, 2 -> R.drawable.ic_recommend_good
+            3 -> R.drawable.ic_recommend_moderate
+            4, 5 -> R.drawable.ic_recommend_bad
+            else -> R.drawable.ic_recommend_moderate
         }
     }
 

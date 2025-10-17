@@ -1,157 +1,288 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
     tools:context=".HomeFragment">
 
-    <!-- 1. Judul Lokasi -->
-    <TextView
-        android:id="@+id/tv_location"
-        android:layout_width="wrap_content"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Memuat lokasi..."
-        android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        android:padding="16dp">
 
-    <!-- 2. Kartu Utama untuk Indeks Kualitas Udara (AQI) -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/card_aqi"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        app:cardElevation="4dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_location">
-
-        <LinearLayout
-            android:layout_width="match_parent"
+        <!-- Bagian Lokasi dan Waktu Update -->
+        <TextView
+            android:id="@+id/tv_location"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:orientation="vertical"
-            android:padding="24dp">
+            android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Tangerang, Indonesia" />
+        <TextView
+            android:id="@+id/tv_last_updated"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_location"
+            tools:text="Diperbarui: 10:30" />
 
-            <TextView
-                android:layout_width="wrap_content"
+        <!-- Kartu Utama AQI -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_aqi"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardElevation="4dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_last_updated">
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Indeks Kualitas Udara (AQI)"
-                android:textAppearance="@style/TextAppearance.Material3.BodyLarge" />
+                android:padding="24dp">
+                <TextView
+                    android:id="@+id/tv_aqi_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Indeks Kualitas Udara (AQI)"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+                <TextView
+                    android:id="@+id/tv_aqi_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textSize="60sp"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/tv_aqi_title"
+                    tools:text="75" />
+                <TextView
+                    android:id="@+id/tv_aqi_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:background="@drawable/status_bg_yellow"
+                    android:paddingStart="16dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="4dp"
+                    android:textColor="@android:color/black"
+                    android:textStyle="bold"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/tv_aqi_value"
+                    tools:text="Cukup" />
+                <View
+                    android:id="@+id/aqi_scale_bar"
+                    android:layout_width="0dp"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="24dp"
+                    android:background="@drawable/aqi_scale_gradient"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/tv_aqi_status" />
+                <androidx.constraintlayout.widget.Guideline
+                    android:id="@+id/guideline_indicator"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:layout_constraintGuide_percent="0.25" />
+                <ImageView
+                    android:id="@+id/iv_indicator"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="Indicator"
+                    android:src="@drawable/ic_indicator"
+                    app:layout_constraintBottom_toBottomOf="@id/aqi_scale_bar"
+                    app:layout_constraintEnd_toEndOf="@id/guideline_indicator"
+                    app:layout_constraintStart_toStartOf="@id/guideline_indicator"
+                    app:layout_constraintTop_toTopOf="@id/aqi_scale_bar" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                android:id="@+id/tv_aqi_value"
-                android:layout_width="wrap_content"
+        <!-- Kartu Rekomendasi Kesehatan -->
+        <TextView
+            android:id="@+id/tv_recommendation_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Rekomendasi Kesehatan"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/card_aqi" />
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_recommendation"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:cardElevation="2dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_recommendation_title">
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:textSize="60sp"
-                android:textStyle="bold"
-                tools:text="58" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="16dp">
+                <ImageView
+                    android:id="@+id/iv_recommendation_icon"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:contentDescription="Recommendation Icon"
+                    tools:src="@drawable/ic_recommend_good" />
+                <TextView
+                    android:id="@+id/tv_recommendation_text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_weight="1"
+                    android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                    tools:text="Waktu yang tepat untuk beraktivitas di luar ruangan." />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                android:id="@+id/tv_aqi_status"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/status_bg_yellow"
-                android:paddingStart="16dp"
-                android:paddingTop="4dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="4dp"
-                android:textColor="@android:color/black"
-                android:textStyle="bold"
-                tools:text="Sedang" />
-
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- 3. Tombol untuk Menyimpan Data -->
-    <Button
-        android:id="@+id/btn_save"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:padding="12dp"
-        android:text="Simpan Data Riwayat"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
-    <!-- 4. Judul untuk Detail Polutan -->
-    <TextView
-        android:id="@+id/tv_details_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:text="Detail Polutan Utama"
-        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/card_aqi" />
-
-    <!-- 5. Kartu untuk Detail Polutan -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/card_details"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        app:cardElevation="2dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tv_details_title">
+        <!-- Detail Polutan  -->
+        <TextView
+            android:id="@+id/tv_pollutant_details_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Detail Komponen Polutan"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/card_recommendation" />
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:id="@+id/pollutant_container"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp">
+            android:layout_marginTop="8dp"
+            android:orientation="vertical"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_pollutant_details_title">
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
+                android:orientation="horizontal">
+                <include
+                    android:id="@+id/pollutant_pm25"
+                    layout="@layout/item_pollutant"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="PM2.5"
-                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
-
-                <TextView
-                    android:id="@+id/tv_pm25_value"
-                    android:layout_width="wrap_content"
+                    android:layout_weight="1" />
+                <include
+                    android:id="@+id/pollutant_co"
+                    layout="@layout/item_pollutant"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
-                    tools:text="15.3 µg/m³" />
+                    android:layout_weight="1" />
             </LinearLayout>
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:gravity="center"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
+                android:orientation="horizontal">
+                <include
+                    android:id="@+id/pollutant_no2"
+                    layout="@layout/item_pollutant"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="CO"
-                    android:textAppearance="@style/TextAppearance.Material3.TitleMedium" />
-
-                <TextView
-                    android:id="@+id/tv_co_value"
-                    android:layout_width="wrap_content"
+                    android:layout_weight="1" />
+                <include
+                    android:id="@+id/pollutant_o3"
+                    layout="@layout/item_pollutant"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
-                    tools:text="201.2 µg/m³" />
+                    android:layout_weight="1" />
             </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <include
+                    android:id="@+id/pollutant_so2"
+                    layout="@layout/item_pollutant"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+                <!-- Placeholder untuk merapikan -->
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_margin="4dp"/>
+            </LinearLayout>
+
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <!-- Panduan Skala AQI -->
+        <TextView
+            android:id="@+id/tv_guide_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Panduan Skala AQI"
+            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/pollutant_container" />
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_guide"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:cardElevation="2dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_guide_title">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <include
+                    android:id="@+id/guide_good"
+                    layout="@layout/item_aqi_guide" />
+                <include
+                    android:id="@+id/guide_moderate"
+                    layout="@layout/item_aqi_guide" />
+                <include
+                    android:id="@+id/guide_unhealthy_sensitive"
+                    layout="@layout/item_aqi_guide" />
+                <include
+                    android:id="@+id/guide_unhealthy"
+                    layout="@layout/item_aqi_guide" />
+                <include
+                    android:id="@+id/guide_very_unhealthy"
+                    layout="@layout/item_aqi_guide" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Tombol Simpan -->
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp"
+            android:padding="12dp"
+            android:text="Simpan Data Riwayat"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/card_guide" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>
