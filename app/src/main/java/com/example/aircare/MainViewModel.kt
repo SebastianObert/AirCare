@@ -23,6 +23,13 @@ class MainViewModel : ViewModel() {
     private val _aqiStatusBackground = MutableLiveData<Int>()
     val aqiStatusBackground: LiveData<Int> = _aqiStatusBackground
 
+    private val _pm25Value = MutableLiveData<String>("-- µg/m³")
+    val pm25Value: LiveData<String> = _pm25Value
+
+    private val _coValue = MutableLiveData<String>("-- µg/m³")
+    val coValue: LiveData<String> = _coValue
+
+
     fun updateLocationAndFetchData(latitude: Double, longitude: Double) {
         val locationString = String.format("Lat: %.2f, Lon: %.2f", latitude, longitude)
         _location.value = locationString
@@ -38,6 +45,10 @@ class MainViewModel : ViewModel() {
                     _aqiValue.value = convertAqiValueToString(aqi)
                     _aqiStatus.value = convertAqiToStatus(aqi)
                     _aqiStatusBackground.value = convertAqiToDrawable(aqi)
+
+                    val components = airData.components
+                    _pm25Value.value = "${components.pm2_5} µg/m³"
+                    _coValue.value = "${components.co} µg/m³"
 
                 } else {
                     _aqiStatus.value = "Data tidak tersedia"
@@ -81,7 +92,6 @@ class MainViewModel : ViewModel() {
             else -> R.drawable.status_bg_yellow
         }
     }
-
 
     fun onSaveButtonClicked() {
         _location.value = "Fitur simpan belum diimplementasikan"

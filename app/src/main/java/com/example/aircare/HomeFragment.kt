@@ -87,6 +87,13 @@ class HomeFragment : Fragment() {
         mainViewModel.aqiStatusBackground.observe(viewLifecycleOwner) { drawableId ->
             binding.tvAqiStatus.setBackgroundResource(drawableId)
         }
+        mainViewModel.pm25Value.observe(viewLifecycleOwner) { value ->
+            binding.tvPm25Value.text = value
+        }
+
+        mainViewModel.coValue.observe(viewLifecycleOwner) { value ->
+            binding.tvCoValue.text = value
+        }
     }
 
     private fun setupActions() {
