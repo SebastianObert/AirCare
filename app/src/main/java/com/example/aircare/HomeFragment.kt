@@ -79,8 +79,14 @@ class HomeFragment : Fragment() {
 
     private fun setupObservers() {
         mainViewModel.location.observe(viewLifecycleOwner) { binding.tvLocation.text = it }
+
         mainViewModel.aqiValue.observe(viewLifecycleOwner) { binding.tvAqiValue.text = it }
+
         mainViewModel.aqiStatus.observe(viewLifecycleOwner) { binding.tvAqiStatus.text = it }
+
+        mainViewModel.aqiStatusBackground.observe(viewLifecycleOwner) { drawableId ->
+            binding.tvAqiStatus.setBackgroundResource(drawableId)
+        }
     }
 
     private fun setupActions() {

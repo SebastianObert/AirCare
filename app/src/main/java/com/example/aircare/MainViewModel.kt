@@ -1,5 +1,6 @@
 package com.example.aircare
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -8,7 +9,7 @@ import kotlinx.coroutines.launch
 
 class MainViewModel : ViewModel() {
 
-    private val apiKey = "YOUR_API_KEY"
+    private val apiKey = "3edfd82f93e2e50f7497a083e88ece56"
 
     private val _location = MutableLiveData("Mencari lokasi...")
     val location: LiveData<String> = _location
@@ -18,6 +19,9 @@ class MainViewModel : ViewModel() {
 
     private val _aqiStatus = MutableLiveData("Menunggu Lokasi")
     val aqiStatus: LiveData<String> = _aqiStatus
+
+    private val _aqiStatusBackground = MutableLiveData<Int>()
+    val aqiStatusBackground: LiveData<Int> = _aqiStatusBackground
 
     fun updateLocationAndFetchData(latitude: Double, longitude: Double) {
         val locationString = String.format("Lat: %.2f, Lon: %.2f", latitude, longitude)
@@ -29,12 +33,17 @@ class MainViewModel : ViewModel() {
                 val response = ApiClient.instance.getAirPollution(latitude, longitude, apiKey)
                 if (response.list.isNotEmpty()) {
                     val airData = response.list[0]
-                    _aqiValue.value = convertAqiValueToString(airData.main.aqi)
-                    _aqiStatus.value = convertAqiToStatus(airData.main.aqi)
+                    val aqi = airData.main.aqi
+
+                    _aqiValue.value = convertAqiValueToString(aqi)
+                    _aqiStatus.value = convertAqiToStatus(aqi)
+                    _aqiStatusBackground.value = convertAqiToDrawable(aqi)
+
                 } else {
                     _aqiStatus.value = "Data tidak tersedia"
                 }
             } catch (e: Exception) {
+                Log.e("AirCareAPI", "Gagal memanggil API: ${e.message}", e)
                 _aqiStatus.value = "Gagal memuat data"
             }
         }
@@ -42,11 +51,11 @@ class MainViewModel : ViewModel() {
 
     private fun convertAqiValueToString(aqi: Int): String {
         return when (aqi) {
-            1 -> "25"
-            2 -> "75"
-            3 -> "125"
-            4 -> "175"
-            5 -> "250"
+            1 -> "25"  // Baik
+            2 -> "75"  // Cukup
+            3 -> "125" // Sedang
+            4 -> "175" // Buruk
+            5 -> "250" // Sangat Buruk
             else -> "--"
         }
     }
@@ -61,6 +70,18 @@ class MainViewModel : ViewModel() {
             else -> "Tidak Diketahui"
         }
     }
+
+    private fun convertAqiToDrawable(aqi: Int): Int {
+        return when (aqi) {
+            1 -> R.drawable.status_bg_green
+            2 -> R.drawable.status_bg_yellow
+            3 -> R.drawable.status_bg_orange
+            4 -> R.drawable.status_bg_red
+            5 -> R.drawable.status_bg_maroon
+            else -> R.drawable.status_bg_yellow
+        }
+    }
+
 
     fun onSaveButtonClicked() {
         _location.value = "Fitur simpan belum diimplementasikan"
