@@ -1,14 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/settings_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".SettingsFragment">
+    tools:context=".ui.settings.SettingsFragment">
 
-    <!-- TODO: Update blank fragment layout -->
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:text="@string/hello_blank_fragment" />
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
 
-</FrameLayout>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Pengaturan Aplikasi"
+            android:textStyle="bold"
+            android:textSize="20sp"
+            android:paddingBottom="16dp" />
+
+        <Switch
+            android:id="@+id/switch_notifications"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Aktifkan Notifikasi" />
+
+        <Button
+            android:id="@+id/btnPrivacyPolicy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Kebijakan Privasi"
+            android:layout_marginTop="16dp" />
+
+        <Button
+            android:id="@+id/btnAbout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tentang Aplikasi"
+            android:layout_marginTop="8dp" />
+
+    </LinearLayout>
+</ScrollView>
