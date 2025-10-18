@@ -4,6 +4,7 @@
     android:id="@+id/profile_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:padding="36dp"
     tools:context=".ui.profile.ProfileFragment">
 
     <LinearLayout
