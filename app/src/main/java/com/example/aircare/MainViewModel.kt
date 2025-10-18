@@ -5,6 +5,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -13,10 +15,19 @@ import java.util.*
 class MainViewModel : ViewModel() {
 
     // Kunci API
-    private val apiKey = "3edfd82f93e2e50f7497a083e88ece56"
+    private val apiKey = "3edfd82f93e2e50f7497a083e88ece56" // Sebaiknya simpan di tempat yang lebih aman
 
-    // Referensi ke Firebase Realtime Database. "history" adalah nama 'tabel' utama
-    private val databaseReference = FirebaseDatabase.getInstance().getReference("history")
+    // Fungsi untuk mendapatkan referensi database SPESIFIK untuk pengguna yang login
+    private fun getDatabaseReference(): DatabaseReference? {
+        // Dapatkan ID unik pengguna dari Firebase Auth
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        return if (userId != null) {
+            // Buat 'tabel' history, lalu buat sub-tabel berdasarkan userId
+            FirebaseDatabase.getInstance().getReference("history").child(userId)
+        } else {
+            null
+        }
+    }
 
     // LiveData untuk Status UI (kualitas udara)
     private val _location = MutableLiveData("Mencari lokasi...")
@@ -31,7 +42,7 @@ class MainViewModel : ViewModel() {
     private val _aqiStatus = MutableLiveData("Menunggu Lokasi")
     val aqiStatus: LiveData<String> = _aqiStatus
 
-    private val _aqiStatusBackground = MutableLiveData<Int>()
+    private val _aqiStatusBackground = MutableLiveData(R.drawable.status_bg_yellow)
     val aqiStatusBackground: LiveData<Int> = _aqiStatusBackground
 
     private val _aqiIndicatorPosition = MutableLiveData(0.0f)
@@ -64,7 +75,7 @@ class MainViewModel : ViewModel() {
     private val _weatherDescription = MutableLiveData("Memuat cuaca...")
     val weatherDescription: LiveData<String> = _weatherDescription
 
-    // LiveData untuk memberi feedback saat menyimpan
+    // LiveData untuk memberi feedback saat menyimpan (menggunakan kelas Event)
     private val _saveStatus = MutableLiveData<Event<String>>()
     val saveStatus: LiveData<Event<String>> = _saveStatus
 
@@ -72,6 +83,7 @@ class MainViewModel : ViewModel() {
     private var lastFetchedLocation: String? = null
     private var lastFetchedAqiValue: String? = null
     private var lastFetchedAqiStatus: String? = null
+    private var lastFetchedStatusColor: Int? = null
 
     // Logika Utama
     fun updateLocationAndFetchData(latitude: Double, longitude: Double) {
@@ -109,11 +121,12 @@ class MainViewModel : ViewModel() {
         // Simpan data terakhir untuk digunakan oleh fungsi simpan
         lastFetchedAqiValue = convertAqiValueToString(aqi)
         lastFetchedAqiStatus = convertAqiToStatus(aqi)
+        lastFetchedStatusColor = convertAqiToDrawable(aqi)
 
         // Update LiveData untuk UI
         _aqiValue.value = lastFetchedAqiValue
         _aqiStatus.value = lastFetchedAqiStatus
-        _aqiStatusBackground.value = convertAqiToDrawable(aqi)
+        _aqiStatusBackground.value = lastFetchedStatusColor ?: R.drawable.status_bg_yellow
         _aqiIndicatorPosition.value = convertAqiToIndicatorPosition(aqi)
         _recommendationIcon.value = getRecommendationIcon(aqi)
         _recommendationText.value = getHealthRecommendation(aqi)
@@ -125,7 +138,7 @@ class MainViewModel : ViewModel() {
         _no2Value.value = "${components.no2} µg/m³"
         _so2Value.value = "${components.so2} µg/m³"
     }
-    // FUNGSI utk memproses respons cuaca
+
     private fun processWeatherResponse(weatherData: WeatherResponse) {
         if (weatherData.weather.isNotEmpty()) {
             val weatherInfo = weatherData.weather[0]
@@ -134,16 +147,22 @@ class MainViewModel : ViewModel() {
         }
         _temperature.value = String.format(Locale.getDefault(), "%.1f°C", weatherData.main.temp)
     }
+
     private fun showError(message: String) {
         _aqiStatus.value = message
         _aqiValue.value = "--"
         _lastUpdated.value = ""
         _recommendationText.value = "Tidak dapat memuat rekomendasi."
+        // Reset nilai polutan
         _pm25Value.value = "-- µg/m³"
         _coValue.value = "-- µg/m³"
         _o3Value.value = "-- µg/m³"
         _no2Value.value = "-- µg/m³"
         _so2Value.value = "-- µg/m³"
+        // Reset nilai cuaca
+        _temperature.value = "--°C"
+        _weatherDescription.value = "Gagal memuat"
+        _weatherIconUrl.value = ""
     }
 
     private fun convertAqiToIndicatorPosition(aqi: Int): Float {
@@ -211,29 +230,34 @@ class MainViewModel : ViewModel() {
     }
 
     fun onSaveButtonClicked() {
+        // Dapatkan referensi database yang spesifik untuk user ini
+        val database = getDatabaseReference()
+        if (database == null) {
+            _saveStatus.value = Event("Gagal: Anda harus login untuk menyimpan riwayat.")
+            return
+        }
+
         if (lastFetchedAqiValue == null || lastFetchedAqiValue == "--") {
             _saveStatus.value = Event("Gagal: Data kualitas udara belum ada.")
             return
         }
 
-        // Buat ID unik menggunakan push()
-        val historyId = databaseReference.push().key
+        val historyId = database.push().key
         if (historyId == null) {
             _saveStatus.value = Event("Gagal membuat ID di database.")
             return
         }
 
-        // Siapkan objek data untuk dikirim ke Firebase
         val historyItem = HistoryItem(
             id = historyId,
             location = lastFetchedLocation,
             aqiValue = lastFetchedAqiValue,
             aqiStatus = lastFetchedAqiStatus,
-            timestamp = System.currentTimeMillis()
+            timestamp = System.currentTimeMillis(),
+            statusColor = lastFetchedStatusColor ?: R.drawable.status_bg_yellow
         )
 
-        // Kirim data ke Firebase
-        databaseReference.child(historyId).setValue(historyItem)
+        database.child(historyId).setValue(historyItem)
             .addOnSuccessListener {
                 _saveStatus.value = Event("Data berhasil disimpan ke riwayat!")
             }

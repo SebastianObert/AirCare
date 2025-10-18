@@ -1,5 +1,14 @@
 <resources>
     <string name="app_name">AirCare</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <string name="login_title">Login AirCare</string>
+    <string name="hint_email">Email</string>
+    <string name="hint_password">Password</string>
+    <string name="button_login">Login</string>
+    <string name="prompt_go_to_signup">Belum punya akun? Daftar</string>
+
+    <string name="signup_title">Daftar Akun Baru</string>
+    <string name="hint_password_signup">Password (min. 6 karakter)</string>
+    <string name="button_signup">Daftar</string>
+    <string name="prompt_go_to_login">Sudah punya akun? Login</string>
 </resources>

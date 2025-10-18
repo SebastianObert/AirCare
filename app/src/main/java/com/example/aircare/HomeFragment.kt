@@ -18,13 +18,14 @@ import com.google.android.gms.location.LocationServices
 
 class HomeFragment : Fragment() {
 
+    // 1. Variabel untuk ViewBinding, ViewModel, dan Lokasi
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
 
     private val mainViewModel: MainViewModel by viewModels()
-
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
+    // 2. Launcher untuk meminta izin
     private val requestPermissionLauncher =
         registerForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
@@ -36,6 +37,7 @@ class HomeFragment : Fragment() {
             }
         }
 
+    // 3. Siklus Hidup Fragment: onCreateView
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -44,27 +46,29 @@ class HomeFragment : Fragment() {
         return binding.root
     }
 
+    // 4. Siklus Hidup Fragment: onViewCreated (Tempat utama untuk logika)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
+        // Memanggil semua fungsi setup
         setupStaticViews()
         setupObservers()
         setupActions()
 
+        // Memulai proses pengecekan izin
         checkLocationPermission()
     }
 
+    // 5. Fungsi untuk mengisi data yang tidak berubah
     private fun setupStaticViews() {
-        // Mengisi nama polutan yang tidak akan berubah
         binding.pollutantPm25.tvPollutantName.text = "PM2.5"
         binding.pollutantCo.tvPollutantName.text = "CO"
         binding.pollutantO3.tvPollutantName.text = "Ozon (O₃)"
         binding.pollutantNo2.tvPollutantName.text = "NO₂"
         binding.pollutantSo2.tvPollutantName.text = "SO₂"
 
-        // Mengisi panduan AQI yang statis
         binding.guideGood.apply {
             viewGuideColor.setBackgroundResource(R.drawable.status_bg_green)
             tvGuideLevel.text = "Baik"
@@ -92,14 +96,15 @@ class HomeFragment : Fragment() {
         }
     }
 
+    // 6. Fungsi untuk menghubungkan LiveData dari ViewModel ke UI
     private fun setupObservers() {
-        // --- Observer untuk data utama ---
+        // Observer data utama
         mainViewModel.location.observe(viewLifecycleOwner) { binding.tvLocation.text = it }
         mainViewModel.lastUpdated.observe(viewLifecycleOwner) { binding.tvLastUpdated.text = it }
         mainViewModel.aqiValue.observe(viewLifecycleOwner) { binding.tvAqiValue.text = it }
         mainViewModel.aqiStatus.observe(viewLifecycleOwner) { binding.tvAqiStatus.text = it }
 
-        // --- Observer untuk UI dinamis ---
+        // Observer UI dinamis
         mainViewModel.aqiStatusBackground.observe(viewLifecycleOwner) { drawableId ->
             if (drawableId != null && drawableId != 0) {
                 binding.tvAqiStatus.setBackgroundResource(drawableId)
@@ -119,43 +124,38 @@ class HomeFragment : Fragment() {
             binding.guidelineIndicator.layoutParams = params
         }
 
-        // --- Observer untuk detail polutan ---
+        // Observer detail polutan
         mainViewModel.pm25Value.observe(viewLifecycleOwner) { binding.pollutantPm25.tvPollutantValue.text = it }
         mainViewModel.coValue.observe(viewLifecycleOwner) { binding.pollutantCo.tvPollutantValue.text = it }
         mainViewModel.o3Value.observe(viewLifecycleOwner) { binding.pollutantO3.tvPollutantValue.text = it }
         mainViewModel.no2Value.observe(viewLifecycleOwner) { binding.pollutantNo2.tvPollutantValue.text = it }
         mainViewModel.so2Value.observe(viewLifecycleOwner) { binding.pollutantSo2.tvPollutantValue.text = it }
 
-        // Observer untuk feedback simpan data
+        // Observer data cuaca
+        mainViewModel.temperature.observe(viewLifecycleOwner) { binding.tvTemperature.text = it }
+        mainViewModel.weatherDescription.observe(viewLifecycleOwner) { binding.tvWeatherDescription.text = it }
+        mainViewModel.weatherIconUrl.observe(viewLifecycleOwner) { url ->
+            if (!url.isNullOrEmpty()) {
+                Glide.with(this).load(url).into(binding.ivWeatherIcon)
+            }
+        }
+
+        // Observer feedback simpan data
         mainViewModel.saveStatus.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandled()?.let { message ->
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
             }
         }
-
-        // OBSERVER UNTUK DATA CUACA
-        mainViewModel.temperature.observe(viewLifecycleOwner) {
-            binding.tvTemperature.text = it
-        }
-        mainViewModel.weatherDescription.observe(viewLifecycleOwner) {
-            binding.tvWeatherDescription.text = it
-        }
-        mainViewModel.weatherIconUrl.observe(viewLifecycleOwner) { url ->
-            if (url.isNotEmpty()) {
-                // Gunakan Glide untuk memuat gambar ikon dari URL ke ImageView
-                Glide.with(this)
-                    .load(url)
-                    .into(binding.ivWeatherIcon)
-            }
-        }
     }
 
+    // 7. Fungsi untuk menghubungkan aksi klik ke ViewModel
     private fun setupActions() {
         binding.btnSave.setOnClickListener {
             mainViewModel.onSaveButtonClicked()
         }
     }
 
+    // 8. Fungsi untuk logika Lokasi
     private fun checkLocationPermission() {
         when {
             ContextCompat.checkSelfPermission(
@@ -172,20 +172,21 @@ class HomeFragment : Fragment() {
 
     private fun getLastLocation() {
         try {
-            fusedLocationClient.lastLocation
-                .addOnSuccessListener { location ->
-                    if (location != null) {
-                        mainViewModel.updateLocationAndFetchData(location.latitude, location.longitude)
-                    } else {
-                        binding.tvLocation.text = "Gagal mendapatkan lokasi. Aktifkan GPS."
-                    }
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (location != null) {
+                    mainViewModel.updateLocationAndFetchData(location.latitude, location.longitude)
+                } else {
+                    binding.tvLocation.text = "Gagal mendapatkan lokasi. Aktifkan GPS."
                 }
+            }
         } catch (e: SecurityException) {
         }
     }
 
+    // 9. Siklus Hidup Fragment: onDestroyView
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
+
 }

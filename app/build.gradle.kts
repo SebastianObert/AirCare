@@ -52,6 +52,7 @@ dependencies {
     // Firebase - Menggunakan BOM
     implementation(platform("com.google.firebase:firebase-bom:32.8.1"))
     implementation(libs.firebase.database)
+    implementation(libs.firebase.auth)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -75,4 +76,5 @@ dependencies {
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 
     implementation("com.github.bumptech.glide:glide:4.16.0")
+    implementation("androidx.core:core-splashscreen:1.0.1")
 }
