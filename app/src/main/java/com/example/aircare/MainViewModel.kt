@@ -15,10 +15,10 @@ class MainViewModel : ViewModel() {
     // Kunci API
     private val apiKey = "3edfd82f93e2e50f7497a083e88ece56"
 
-    // Referensi ke Firebase Realtime Database. "history" adalah nama 'tabel' utama kita.
+    // Referensi ke Firebase Realtime Database. "history" adalah nama 'tabel' utama
     private val databaseReference = FirebaseDatabase.getInstance().getReference("history")
 
-    // === LiveData untuk Status UI ===
+    // LiveData untuk Status UI (kualitas udara)
     private val _location = MutableLiveData("Mencari lokasi...")
     val location: LiveData<String> = _location
 
@@ -54,6 +54,16 @@ class MainViewModel : ViewModel() {
     private val _so2Value = MutableLiveData("-- µg/m³")
     val so2Value: LiveData<String> = _so2Value
 
+    // LiveData untuk Status UI (Cuaca)
+    private val _weatherIconUrl = MutableLiveData<String>()
+    val weatherIconUrl: LiveData<String> = _weatherIconUrl
+
+    private val _temperature = MutableLiveData("--°C")
+    val temperature: LiveData<String> = _temperature
+
+    private val _weatherDescription = MutableLiveData("Memuat cuaca...")
+    val weatherDescription: LiveData<String> = _weatherDescription
+
     // LiveData untuk memberi feedback saat menyimpan
     private val _saveStatus = MutableLiveData<Event<String>>()
     val saveStatus: LiveData<Event<String>> = _saveStatus
@@ -71,12 +81,18 @@ class MainViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val response = ApiClient.instance.getAirPollution(latitude, longitude, apiKey)
-                if (response.list.isNotEmpty()) {
-                    processApiResponse(response.list[0])
+                // PANGGILAN API PERTAMA: KUALITAS UDARA
+                val airQualityResponse = ApiClient.instance.getAirPollution(latitude, longitude, apiKey)
+                if (airQualityResponse.list.isNotEmpty()) {
+                    processApiResponse(airQualityResponse.list[0])
                 } else {
-                    showError("Data tidak tersedia")
+                    showError("Data AQI tidak tersedia")
                 }
+
+                // PANGGILAN API KEDUA: CUACA SAAT INI
+                val weatherResponse = ApiClient.instance.getCurrentWeather(latitude, longitude, apiKey = apiKey)
+                processWeatherResponse(weatherResponse)
+
             } catch (e: Exception) {
                 Log.e("AirCareAPI", "Gagal memanggil API: ${e.message}", e)
                 showError("Gagal memuat data")
@@ -109,7 +125,15 @@ class MainViewModel : ViewModel() {
         _no2Value.value = "${components.no2} µg/m³"
         _so2Value.value = "${components.so2} µg/m³"
     }
-
+    // FUNGSI utk memproses respons cuaca
+    private fun processWeatherResponse(weatherData: WeatherResponse) {
+        if (weatherData.weather.isNotEmpty()) {
+            val weatherInfo = weatherData.weather[0]
+            _weatherDescription.value = weatherInfo.description.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+            _weatherIconUrl.value = "https://openweathermap.org/img/wn/${weatherInfo.icon}@2x.png"
+        }
+        _temperature.value = String.format(Locale.getDefault(), "%.1f°C", weatherData.main.temp)
+    }
     private fun showError(message: String) {
         _aqiStatus.value = message
         _aqiValue.value = "--"

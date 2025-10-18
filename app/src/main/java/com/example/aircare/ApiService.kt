@@ -13,6 +13,18 @@ data class Components(
     val so2: Double,
     val pm2_5: Double
 )
+data class WeatherResponse(
+    val weather: List<WeatherInfo>,
+    val main: MainWeather
+)
+data class WeatherInfo(
+    val description: String,
+    val icon: String
+)
+data class MainWeather(
+    val temp: Double
+)
+
 
 interface ApiService {
     @GET("data/2.5/air_pollution")
@@ -21,4 +33,11 @@ interface ApiService {
         @Query("lon") longitude: Double,
         @Query("appid") apiKey: String
     ): AirQualityResponse
+    @GET("data/2.5/weather")
+    suspend fun getCurrentWeather(
+        @Query("lat") latitude: Double,
+        @Query("lon") longitude: Double,
+        @Query("units") units: String = "metric", // 'metric' untuk Celcius
+        @Query("appid") apiKey: String
+    ): WeatherResponse
 }

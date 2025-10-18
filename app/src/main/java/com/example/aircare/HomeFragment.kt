@@ -6,14 +6,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import com.bumptech.glide.Glide
 import com.example.aircare.databinding.FragmentHomeBinding
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import android.widget.Toast
 
 class HomeFragment : Fragment() {
 
@@ -56,12 +57,14 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupStaticViews() {
+        // Mengisi nama polutan yang tidak akan berubah
         binding.pollutantPm25.tvPollutantName.text = "PM2.5"
         binding.pollutantCo.tvPollutantName.text = "CO"
         binding.pollutantO3.tvPollutantName.text = "Ozon (O₃)"
         binding.pollutantNo2.tvPollutantName.text = "NO₂"
         binding.pollutantSo2.tvPollutantName.text = "SO₂"
 
+        // Mengisi panduan AQI yang statis
         binding.guideGood.apply {
             viewGuideColor.setBackgroundResource(R.drawable.status_bg_green)
             tvGuideLevel.text = "Baik"
@@ -90,15 +93,14 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupObservers() {
-        // Observer untuk data cuaca dan lokasi
+        // --- Observer untuk data utama ---
         mainViewModel.location.observe(viewLifecycleOwner) { binding.tvLocation.text = it }
         mainViewModel.lastUpdated.observe(viewLifecycleOwner) { binding.tvLastUpdated.text = it }
         mainViewModel.aqiValue.observe(viewLifecycleOwner) { binding.tvAqiValue.text = it }
         mainViewModel.aqiStatus.observe(viewLifecycleOwner) { binding.tvAqiStatus.text = it }
 
-        // Observer untuk elemen UI dinamis (warna, ikon, dll.)
+        // --- Observer untuk UI dinamis ---
         mainViewModel.aqiStatusBackground.observe(viewLifecycleOwner) { drawableId ->
-            // Pemeriksaan null/0 untuk keamanan
             if (drawableId != null && drawableId != 0) {
                 binding.tvAqiStatus.setBackgroundResource(drawableId)
             }
@@ -117,18 +119,33 @@ class HomeFragment : Fragment() {
             binding.guidelineIndicator.layoutParams = params
         }
 
-        // Observer untuk nilai polutan
+        // --- Observer untuk detail polutan ---
         mainViewModel.pm25Value.observe(viewLifecycleOwner) { binding.pollutantPm25.tvPollutantValue.text = it }
         mainViewModel.coValue.observe(viewLifecycleOwner) { binding.pollutantCo.tvPollutantValue.text = it }
         mainViewModel.o3Value.observe(viewLifecycleOwner) { binding.pollutantO3.tvPollutantValue.text = it }
         mainViewModel.no2Value.observe(viewLifecycleOwner) { binding.pollutantNo2.tvPollutantValue.text = it }
         mainViewModel.so2Value.observe(viewLifecycleOwner) { binding.pollutantSo2.tvPollutantValue.text = it }
 
-
-        // Mengamati LiveData 'saveStatus' dari ViewModel.
+        // Observer untuk feedback simpan data
         mainViewModel.saveStatus.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandled()?.let { message ->
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // OBSERVER UNTUK DATA CUACA
+        mainViewModel.temperature.observe(viewLifecycleOwner) {
+            binding.tvTemperature.text = it
+        }
+        mainViewModel.weatherDescription.observe(viewLifecycleOwner) {
+            binding.tvWeatherDescription.text = it
+        }
+        mainViewModel.weatherIconUrl.observe(viewLifecycleOwner) { url ->
+            if (url.isNotEmpty()) {
+                // Gunakan Glide untuk memuat gambar ikon dari URL ke ImageView
+                Glide.with(this)
+                    .load(url)
+                    .into(binding.ivWeatherIcon)
             }
         }
     }
