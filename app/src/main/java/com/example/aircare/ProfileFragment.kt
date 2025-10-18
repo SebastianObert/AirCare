@@ -140,10 +140,6 @@ class ProfileFragment : Fragment() {
             saveCurrentLocationAsHome()
         }
 
-        binding.btnLogout.setOnClickListener {
-            auth.signOut()
-            goToAuthActivity()
-        }
     }
 
     private fun saveCurrentLocationAsHome() {

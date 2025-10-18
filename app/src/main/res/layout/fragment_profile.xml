@@ -1,19 +1,17 @@
-<?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/profile_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="36dp"
+    android:padding="24dp"
     tools:context=".ProfileFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_horizontal"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:orientation="vertical">
 
         <ImageView
             android:id="@+id/imgProfile"
@@ -29,6 +27,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textStyle="bold"
+            android:layout_marginTop="8dp"
             tools:text="Nama Pengguna" />
 
         <TextView
@@ -39,13 +38,12 @@
             android:layout_marginTop="4dp"
             tools:text="pengguna@email.com" />
 
-
         <TextView
             android:id="@+id/tvJoined"
             style="@style/TextAppearance.Material3.BodySmall"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="4dp"
             tools:text="Bergabung sejak: 18 Okt 2025" />
 
         <!-- Pembatas visual -->
@@ -55,7 +53,7 @@
             android:layout_marginTop="24dp"
             android:background="?android:attr/listDivider" />
 
-        <!-- == SIMPAN LOKASI === -->
+        <!-- Tombol Simpan Lokasi -->
         <Button
             android:id="@+id/btn_save_home_location"
             style="@style/Widget.Material3.Button.OutlinedButton"
@@ -64,37 +62,29 @@
             android:layout_marginTop="24dp"
             android:text="Simpan Lokasi Saat Ini sebagai Rumah" />
 
+        <!-- Tombol Edit Profil (jarak lebih besar supaya tidak nabrak) -->
         <Button
             android:id="@+id/btnEditProfile"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="16dp"
             android:text="Edit Profil" />
 
-        <!-- === LOGOUT === -->
-        <Button
-            android:id="@+id/btn_logout"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            android:text="Logout"
-            android:textColor="?attr/colorError" />
-
+        <!-- Judul Lokasi Tersimpan -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
+            android:layout_marginBottom="8dp"
             android:text="Lokasi Tersimpan"
             android:textAppearance="?attr/textAppearanceTitleMedium" />
 
+        <!-- RecyclerView -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_saved_locations"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:layout_marginTop="8dp"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"
             tools:listitem="@layout/item_saved_location"
             tools:itemCount="2"/>
 
