@@ -2,12 +2,14 @@ package com.example.aircare
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.location.Geocoder
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -15,17 +17,16 @@ import com.bumptech.glide.Glide
 import com.example.aircare.databinding.FragmentHomeBinding
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import java.util.*
 
 class HomeFragment : Fragment() {
 
-    // 1. Variabel untuk ViewBinding, ViewModel, dan Lokasi
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
 
     private val mainViewModel: MainViewModel by viewModels()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    // 2. Launcher untuk meminta izin
     private val requestPermissionLauncher =
         registerForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
@@ -37,7 +38,6 @@ class HomeFragment : Fragment() {
             }
         }
 
-    // 3. Siklus Hidup Fragment: onCreateView
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -46,22 +46,18 @@ class HomeFragment : Fragment() {
         return binding.root
     }
 
-    // 4. Siklus Hidup Fragment: onViewCreated (Tempat utama untuk logika)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
-        // Memanggil semua fungsi setup
         setupStaticViews()
         setupObservers()
         setupActions()
 
-        // Memulai proses pengecekan izin
         checkLocationPermission()
     }
 
-    // 5. Fungsi untuk mengisi data yang tidak berubah
     private fun setupStaticViews() {
         binding.pollutantPm25.tvPollutantName.text = "PM2.5"
         binding.pollutantCo.tvPollutantName.text = "CO"
@@ -96,15 +92,11 @@ class HomeFragment : Fragment() {
         }
     }
 
-    // 6. Fungsi untuk menghubungkan LiveData dari ViewModel ke UI
     private fun setupObservers() {
-        // Observer data utama
-        mainViewModel.location.observe(viewLifecycleOwner) { binding.tvLocation.text = it }
         mainViewModel.lastUpdated.observe(viewLifecycleOwner) { binding.tvLastUpdated.text = it }
         mainViewModel.aqiValue.observe(viewLifecycleOwner) { binding.tvAqiValue.text = it }
         mainViewModel.aqiStatus.observe(viewLifecycleOwner) { binding.tvAqiStatus.text = it }
 
-        // Observer UI dinamis
         mainViewModel.aqiStatusBackground.observe(viewLifecycleOwner) { drawableId ->
             if (drawableId != null && drawableId != 0) {
                 binding.tvAqiStatus.setBackgroundResource(drawableId)
@@ -124,14 +116,12 @@ class HomeFragment : Fragment() {
             binding.guidelineIndicator.layoutParams = params
         }
 
-        // Observer detail polutan
         mainViewModel.pm25Value.observe(viewLifecycleOwner) { binding.pollutantPm25.tvPollutantValue.text = it }
         mainViewModel.coValue.observe(viewLifecycleOwner) { binding.pollutantCo.tvPollutantValue.text = it }
         mainViewModel.o3Value.observe(viewLifecycleOwner) { binding.pollutantO3.tvPollutantValue.text = it }
         mainViewModel.no2Value.observe(viewLifecycleOwner) { binding.pollutantNo2.tvPollutantValue.text = it }
         mainViewModel.so2Value.observe(viewLifecycleOwner) { binding.pollutantSo2.tvPollutantValue.text = it }
 
-        // Observer data cuaca
         mainViewModel.temperature.observe(viewLifecycleOwner) { binding.tvTemperature.text = it }
         mainViewModel.weatherDescription.observe(viewLifecycleOwner) { binding.tvWeatherDescription.text = it }
         mainViewModel.weatherIconUrl.observe(viewLifecycleOwner) { url ->
@@ -140,7 +130,6 @@ class HomeFragment : Fragment() {
             }
         }
 
-        // Observer feedback simpan data
         mainViewModel.saveStatus.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandled()?.let { message ->
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
@@ -148,14 +137,13 @@ class HomeFragment : Fragment() {
         }
     }
 
-    // 7. Fungsi untuk menghubungkan aksi klik ke ViewModel
     private fun setupActions() {
         binding.btnSave.setOnClickListener {
             mainViewModel.onSaveButtonClicked()
         }
     }
 
-    // 8. Fungsi untuk logika Lokasi
+    //  Periksa izin lokasi
     private fun checkLocationPermission() {
         when {
             ContextCompat.checkSelfPermission(
@@ -170,23 +158,67 @@ class HomeFragment : Fragment() {
         }
     }
 
+    // Ambil lokasi terakhir dan ubah jadi nama kota
     private fun getLastLocation() {
-        try {
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                if (location != null) {
-                    mainViewModel.updateLocationAndFetchData(location.latitude, location.longitude)
-                } else {
-                    binding.tvLocation.text = "Gagal mendapatkan lokasi. Aktifkan GPS."
-                }
+        if (ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                requireActivity(),
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                100
+            )
+            return
+        }
+
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                val latitude = location.latitude
+                val longitude = location.longitude
+
+                val addressText = getAddressFromLocation(latitude, longitude)
+                binding.tvLocation.text = addressText
+
+                // Update data AQI dari ViewModel
+                mainViewModel.updateLocationAndFetchData(latitude, longitude)
+            } else {
+                binding.tvLocation.text = "Lokasi tidak ditemukan"
             }
-        } catch (e: SecurityException) {
         }
     }
 
-    // 9. Siklus Hidup Fragment: onDestroyView
+    private fun getAddressFromLocation(latitude: Double, longitude: Double): String {
+        return try {
+            val geocoder = Geocoder(requireContext(), Locale.getDefault())
+            val addresses = geocoder.getFromLocation(latitude, longitude, 1)
+
+            if (!addresses.isNullOrEmpty()) {
+                val city = addresses[0].locality ?: ""
+                val adminArea = addresses[0].subAdminArea ?: ""
+                val country = addresses[0].countryName ?: ""
+
+                when {
+                    city.isNotEmpty() -> "$city, $country"
+                    adminArea.isNotEmpty() -> "$adminArea, $country"
+                    else -> country
+                }
+            } else {
+                "Lokasi tidak diketahui"
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            "Lokasi tidak diketahui"
+        }
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
     }
-
 }
