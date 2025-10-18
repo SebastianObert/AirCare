@@ -8,6 +8,7 @@
     <color name="status_orange">#FF9800</color>
     <color name="status_red">#F44336</color>
     <color name="status_maroon">#B71C1C</color>
+    <color name="red">#FF0000</color>
 
     <color name="splash_background">#FFFFFF</color>
 </resources>
