@@ -6,6 +6,14 @@
     android:orientation="vertical"
     android:padding="32dp">
 
+    <ImageView
+        android:id="@+id/iv_login_logo"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_marginBottom="24dp"
+        android:contentDescription="Logo Aplikasi"
+        android:src="@drawable/aircare" />
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
