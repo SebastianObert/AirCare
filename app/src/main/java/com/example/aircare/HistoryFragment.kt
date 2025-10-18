@@ -4,21 +4,23 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.aircare.databinding.FragmentHistoryBinding
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
 
 class HistoryFragment : Fragment() {
 
     private var _binding: FragmentHistoryBinding? = null
     private val binding get() = _binding!!
+    private lateinit var adapter: HistoryAdapter
+    private val list = mutableListOf<HistoryItem>()
 
-    // Referensi ke node 'history' di Firebase Realtime Database
-    private val database = FirebaseDatabase.getInstance().getReference("history")
+    private val userId = FirebaseAuth.getInstance().currentUser?.uid
+    private val database: DatabaseReference? =
+        userId?.let { FirebaseDatabase.getInstance().getReference("history").child(it) }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -31,51 +33,56 @@ class HistoryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Setup RecyclerView
-        binding.rvHistory.layoutManager = LinearLayoutManager(context)
+        adapter = HistoryAdapter(list) { item -> deleteItem(item) }
 
-        // ValueEventListener akan terus "mendengarkan" perubahan data di Firebase.
-        // Setiap kali ada data baru, data dihapus, atau data diubah, kode di dalam onDataChange akan berjalan.
+        binding.rvHistory.layoutManager = LinearLayoutManager(context)
+        binding.rvHistory.adapter = adapter
+
+        listenToDatabase()
+    }
+
+    private fun listenToDatabase() {
+        if (database == null) {
+            binding.tvEmptyHistory.text = "Anda belum login."
+            binding.tvEmptyHistory.visibility = View.VISIBLE
+            binding.rvHistory.visibility = View.GONE
+            return
+        }
+
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val historyList = mutableListOf<HistoryItem>()
-
-                // Looping melalui semua "anak" (entri) di dalam node "history"
+                val tempList = mutableListOf<HistoryItem>()
                 for (data in snapshot.children) {
                     val item = data.getValue(HistoryItem::class.java)
-                    if (item != null) {
-                        historyList.add(item)
-                    }
+                    if (item != null) tempList.add(item)
                 }
 
-                // Cek apakah daftar riwayat kosong atau tidak
-                if (historyList.isEmpty()) {
-                    // Jika kosong, sembunyikan RecyclerView dan tampilkan teks
-                    binding.rvHistory.visibility = View.GONE
+                if (tempList.isEmpty()) {
                     binding.tvEmptyHistory.visibility = View.VISIBLE
+                    binding.rvHistory.visibility = View.GONE
                 } else {
-                    // Jika ada data, tampilkan RecyclerView dan sembunyikan teks
-                    binding.rvHistory.visibility = View.VISIBLE
                     binding.tvEmptyHistory.visibility = View.GONE
-
-                    // Buat adapter baru dengan data dari Firebase
-                    // Kita urutkan berdasarkan timestamp (waktu) agar yang terbaru muncul di atas
-                    val historyAdapter = HistoryAdapter(historyList.sortedByDescending { it.timestamp })
-                    binding.rvHistory.adapter = historyAdapter
+                    binding.rvHistory.visibility = View.VISIBLE
+                    adapter.updateList(tempList.sortedByDescending { it.timestamp })
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                // Tampilkan pesan error jika gagal mengambil data dari Firebase
-                binding.rvHistory.visibility = View.GONE
+                binding.tvEmptyHistory.text = "Gagal memuat data: ${error.message}"
                 binding.tvEmptyHistory.visibility = View.VISIBLE
-                binding.tvEmptyHistory.text = "Gagal memuat data riwayat."
             }
         })
     }
 
-    // Fungsi createDummyData() tidak lagi dibutuhkan, bisa dihapus.
-    // private fun createDummyData(): List<HistoryItem> { ... }
+    private fun deleteItem(item: HistoryItem) {
+        database?.child(item.id ?: return)?.removeValue()
+            ?.addOnSuccessListener {
+                Toast.makeText(context, "Data berhasil dihapus", Toast.LENGTH_SHORT).show()
+            }
+            ?.addOnFailureListener {
+                Toast.makeText(context, "Gagal menghapus data", Toast.LENGTH_SHORT).show()
+            }
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()
