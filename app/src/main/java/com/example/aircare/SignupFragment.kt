@@ -10,6 +10,8 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.aircare.databinding.FragmentSignupBinding
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.database.FirebaseDatabase
 
 class SignupFragment : Fragment() {
 
@@ -61,29 +63,25 @@ class SignupFragment : Fragment() {
             binding.etPassword.requestFocus()
             return
         }
-        // Firebase Auth mensyaratkan password minimal 6 karakter
         if (password.length < 6) {
             binding.etPassword.error = "Password minimal 6 karakter"
             binding.etPassword.requestFocus()
             return
         }
 
-        // Tampilkan ProgressBar
         binding.progressBar.visibility = View.VISIBLE
 
-        // Proses pembuatan akun baru menggunakan Firebase
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener(requireActivity()) { task ->
-                // Sembunyikan ProgressBar setelah proses selesai
                 binding.progressBar.visibility = View.GONE
 
                 if (task.isSuccessful) {
-                    // Jika pendaftaran berhasil, langsung arahkan ke MainActivity
+                    // Pendaftaran berhasil, panggil fungsi untuk menyimpan info user ke Realtime Database
+                    saveUserToDatabase(task.result.user)
+
                     Toast.makeText(context, "Pendaftaran Berhasil!", Toast.LENGTH_SHORT).show()
                     goToMainActivity()
                 } else {
-                    // Jika gagal, tampilkan pesan error dari Firebase
-                    // Contoh error: email sudah terdaftar, format email salah, dll.
                     Toast.makeText(
                         context,
                         "Pendaftaran Gagal: ${task.exception?.message}",
@@ -93,8 +91,31 @@ class SignupFragment : Fragment() {
             }
     }
 
+    // FUNGSI UNTUK MENYIMPAN DATA PENGGUNA
+    private fun saveUserToDatabase(firebaseUser: FirebaseUser?) {
+        // Pastikan firebaseUser tidak null
+        val user = firebaseUser ?: return
+
+        // Ambil bagian nama dari email sebagai nama default
+        val nameFromEmail = user.email?.split('@')?.get(0)?.replaceFirstChar { it.titlecase() } ?: "User"
+
+        // Buat objek User yang akan disimpan
+        val newUser = User(
+            uid = user.uid,
+            email = user.email,
+            name = nameFromEmail,
+            memberSince = System.currentTimeMillis()
+        )
+
+        FirebaseDatabase.getInstance().getReference("users")
+            .child(user.uid)
+            .setValue(newUser)
+            .addOnFailureListener {
+                Toast.makeText(context, "Gagal menyimpan info profil.", Toast.LENGTH_SHORT).show()
+            }
+    }
+
     private fun goToMainActivity() {
-        // Fungsi ini sama persis dengan yang ada di LoginFragment
         val intent = Intent(requireActivity(), MainActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)

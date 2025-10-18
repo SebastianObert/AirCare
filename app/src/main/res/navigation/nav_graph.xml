@@ -18,7 +18,7 @@
 
     <fragment
         android:id="@+id/profileFragment"
-        android:name="com.example.aircare.ui.profile.ProfileFragment"
+        android:name="com.example.aircare.ProfileFragment"
         android:label="fragment_profile"
         tools:layout="@layout/fragment_profile" />
 

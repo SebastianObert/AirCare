@@ -1,63 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/profile_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="36dp"
-    tools:context=".ui.profile.ProfileFragment">
+    tools:context=".ProfileFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
         android:orientation="vertical"
-        android:padding="24dp"
-        android:gravity="center_horizontal">
+        android:padding="24dp">
 
         <ImageView
             android:id="@+id/imgProfile"
             android:layout_width="120dp"
             android:layout_height="120dp"
-            android:src="@drawable/ic_person"
             android:layout_marginBottom="16dp"
-            android:contentDescription="Foto Profil" />
+            android:contentDescription="Foto Profil"
+            android:src="@drawable/ic_person" />
 
         <TextView
             android:id="@+id/tvName"
+            style="@style/TextAppearance.Material3.HeadlineSmall"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Nama Pengguna"
             android:textStyle="bold"
-            android:textSize="20sp" />
+            tools:text="Nama Pengguna" />
 
         <TextView
             android:id="@+id/tvEmail"
+            style="@style/TextAppearance.Material3.BodyLarge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Email"
-            android:layout_marginTop="4dp" />
+            android:layout_marginTop="4dp"
+            tools:text="pengguna@email.com" />
 
-        <TextView
-            android:id="@+id/tvRole"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Peran"
-            android:layout_marginTop="4dp" />
 
         <TextView
             android:id="@+id/tvJoined"
+            style="@style/TextAppearance.Material3.BodySmall"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tanggal Bergabung"
             android:layout_marginTop="8dp"
-            android:textColor="#888888" />
+            tools:text="Bergabung sejak: 18 Okt 2025" />
+
+        <!-- Pembatas visual -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="24dp"
+            android:background="?android:attr/listDivider" />
+
+        <!-- == SIMPAN LOKASI === -->
+        <Button
+            android:id="@+id/btn_save_home_location"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Simpan Lokasi Saat Ini sebagai Rumah" />
 
         <Button
             android:id="@+id/btnEditProfile"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Edit Profil"
-            android:layout_marginTop="24dp" />
+            android:layout_marginTop="8dp"
+            android:text="Edit Profil" />
+
+        <!-- === LOGOUT === -->
+        <Button
+            android:id="@+id/btn_logout"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Logout"
+            android:textColor="?attr/colorError" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:text="Lokasi Tersimpan"
+            android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_saved_locations"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:layout_marginTop="8dp"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/item_saved_location"
+            tools:itemCount="2"/>
 
     </LinearLayout>
 </ScrollView>
