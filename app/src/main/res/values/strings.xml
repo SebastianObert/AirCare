@@ -11,4 +11,6 @@
     <string name="hint_password_signup">Password (min. 6 karakter)</string>
     <string name="button_signup">Daftar</string>
     <string name="prompt_go_to_login">Sudah punya akun? Login</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

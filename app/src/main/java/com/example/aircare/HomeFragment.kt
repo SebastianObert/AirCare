@@ -93,10 +93,13 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupObservers() {
+        // --- Observer untuk data utama
+        mainViewModel.location.observe(viewLifecycleOwner) { binding.tvLocation.text = it }
         mainViewModel.lastUpdated.observe(viewLifecycleOwner) { binding.tvLastUpdated.text = it }
         mainViewModel.aqiValue.observe(viewLifecycleOwner) { binding.tvAqiValue.text = it }
         mainViewModel.aqiStatus.observe(viewLifecycleOwner) { binding.tvAqiStatus.text = it }
 
+        // --- Observer untuk UI dinamis ---
         mainViewModel.aqiStatusBackground.observe(viewLifecycleOwner) { drawableId ->
             if (drawableId != null && drawableId != 0) {
                 binding.tvAqiStatus.setBackgroundResource(drawableId)
@@ -116,12 +119,14 @@ class HomeFragment : Fragment() {
             binding.guidelineIndicator.layoutParams = params
         }
 
+        // --- Observer untuk detail polutan ---
         mainViewModel.pm25Value.observe(viewLifecycleOwner) { binding.pollutantPm25.tvPollutantValue.text = it }
         mainViewModel.coValue.observe(viewLifecycleOwner) { binding.pollutantCo.tvPollutantValue.text = it }
         mainViewModel.o3Value.observe(viewLifecycleOwner) { binding.pollutantO3.tvPollutantValue.text = it }
         mainViewModel.no2Value.observe(viewLifecycleOwner) { binding.pollutantNo2.tvPollutantValue.text = it }
         mainViewModel.so2Value.observe(viewLifecycleOwner) { binding.pollutantSo2.tvPollutantValue.text = it }
 
+        // --- Observer untuk data cuaca ---
         mainViewModel.temperature.observe(viewLifecycleOwner) { binding.tvTemperature.text = it }
         mainViewModel.weatherDescription.observe(viewLifecycleOwner) { binding.tvWeatherDescription.text = it }
         mainViewModel.weatherIconUrl.observe(viewLifecycleOwner) { url ->
@@ -130,10 +135,19 @@ class HomeFragment : Fragment() {
             }
         }
 
+        // --- Observer untuk feedback simpan data ---
         mainViewModel.saveStatus.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandled()?.let { message ->
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
             }
+        }
+
+        // Observer ini mengontrol status aktif/nonaktif dari tombol Simpan.
+        mainViewModel.isDataReadyToSave.observe(viewLifecycleOwner) { isReady ->
+            binding.btnSave.isEnabled = isReady
+
+            // Memberikan feedback visual. Tombol akan terlihat pudar saat tidak bisa diklik.
+            binding.btnSave.alpha = if (isReady) 1.0f else 0.5f
         }
     }
 
@@ -158,62 +172,52 @@ class HomeFragment : Fragment() {
         }
     }
 
-    // Ambil lokasi terakhir dan ubah jadi nama kota
     private fun getLastLocation() {
-        if (ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED &&
-            ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                requireActivity(),
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
-                100
-            )
-            return
-        }
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (location != null) {
+                    // 1. Dapatkan koordinat
+                    val latitude = location.latitude
+                    val longitude = location.longitude
 
-        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            if (location != null) {
-                val latitude = location.latitude
-                val longitude = location.longitude
+                    // 2. Ubah koordinat menjadi nama alamat
+                    val addressText = getAddressFromLocation(latitude, longitude)
 
-                val addressText = getAddressFromLocation(latitude, longitude)
-                binding.tvLocation.text = addressText
-
-                // Update data AQI dari ViewModel
-                mainViewModel.updateLocationAndFetchData(latitude, longitude)
-            } else {
-                binding.tvLocation.text = "Lokasi tidak ditemukan"
+                    // 3. Kirim SEMUA data (koordinat DAN nama alamat) ke ViewModel
+                    mainViewModel.updateLocationAndFetchData(latitude, longitude, addressText)
+                } else {
+                    binding.tvLocation.text = "Gagal mendapatkan lokasi. Aktifkan GPS."
+                }
             }
+        } catch (e: SecurityException) {
+            binding.tvLocation.text = "Error keamanan saat akses lokasi."
         }
     }
 
     private fun getAddressFromLocation(latitude: Double, longitude: Double): String {
+        if (context == null) return "Lokasi tidak diketahui"
+
         return try {
             val geocoder = Geocoder(requireContext(), Locale.getDefault())
             val addresses = geocoder.getFromLocation(latitude, longitude, 1)
 
             if (!addresses.isNullOrEmpty()) {
-                val city = addresses[0].locality ?: ""
-                val adminArea = addresses[0].subAdminArea ?: ""
-                val country = addresses[0].countryName ?: ""
+                val address = addresses[0]
+                val city = address.locality
+                val adminArea = address.subAdminArea
+                val country = address.countryName
 
                 when {
-                    city.isNotEmpty() -> "$city, $country"
-                    adminArea.isNotEmpty() -> "$adminArea, $country"
-                    else -> country
+                    !city.isNullOrEmpty() -> "$city, $country"
+                    !adminArea.isNullOrEmpty() -> "$adminArea, $country"
+                    else -> country ?: "Lokasi tidak diketahui"
                 }
             } else {
                 "Lokasi tidak diketahui"
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            "Lokasi tidak diketahui"
+            "Gagal menerjemahkan lokasi"
         }
     }
 

@@ -22,6 +22,8 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.navigation.fragment.findNavController
+
 
 class ProfileFragment : Fragment() {
 
@@ -89,13 +91,14 @@ class ProfileFragment : Fragment() {
         binding.tvEmail.text = currentUser.email
 
         val userRef = FirebaseDatabase.getInstance().getReference("users").child(currentUser.uid)
-        userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+        // GUNAKAN addValueEventListener agar data selalu sinkron
+        userRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val user = snapshot.getValue(User::class.java)
-                user?.let {
-                    binding.tvName.text = it.name
+                if (user != null && context != null) {
+                    binding.tvName.text = user.name
                     val sdf = SimpleDateFormat("MMM yyyy", Locale.getDefault())
-                    binding.tvJoined.text = "Bergabung sejak ${sdf.format(Date(it.memberSince ?: 0))}"
+                    binding.tvJoined.text = "Bergabung sejak ${sdf.format(Date(user.memberSince ?: 0))}"
                 }
             }
             override fun onCancelled(error: DatabaseError) {
@@ -128,9 +131,15 @@ class ProfileFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
+        // Tambahkan listener untuk tombol edit profil
+        binding.btnEditProfile.setOnClickListener {
+            findNavController().navigate(R.id.action_profileFragment_to_editProfileFragment)
+        }
+
         binding.btnSaveHomeLocation.setOnClickListener {
             saveCurrentLocationAsHome()
         }
+
         binding.btnLogout.setOnClickListener {
             auth.signOut()
             goToAuthActivity()

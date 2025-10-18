@@ -79,6 +79,10 @@ class MainViewModel : ViewModel() {
     private val _saveStatus = MutableLiveData<Event<String>>()
     val saveStatus: LiveData<Event<String>> = _saveStatus
 
+    // === MENGONTROL TOMBOL SIMPAN ===
+    private val _isDataReadyToSave = MutableLiveData(false)
+    val isDataReadyToSave: LiveData<Boolean> = _isDataReadyToSave
+
     // Variabel Internal untuk Menyimpan Data Terakhir
     private var lastFetchedLocation: String? = null
     private var lastFetchedAqiValue: String? = null
@@ -86,10 +90,14 @@ class MainViewModel : ViewModel() {
     private var lastFetchedStatusColor: Int? = null
 
     // Logika Utama
-    fun updateLocationAndFetchData(latitude: Double, longitude: Double) {
-        lastFetchedLocation = String.format("Lat: %.2f, Lon: %.2f", latitude, longitude)
-        _location.value = lastFetchedLocation
+    fun updateLocationAndFetchData(latitude: Double, longitude: Double, locationName: String) {
+        _location.value = locationName
         _aqiStatus.value = "Mengambil data..."
+
+        lastFetchedLocation = String.format("Lat: %.2f, Lon: %.2f", latitude, longitude)
+
+        _isDataReadyToSave.value = false
+        lastFetchedAqiValue = null
 
         viewModelScope.launch {
             try {
@@ -137,6 +145,8 @@ class MainViewModel : ViewModel() {
         _o3Value.value = "${components.o3} µg/m³"
         _no2Value.value = "${components.no2} µg/m³"
         _so2Value.value = "${components.so2} µg/m³"
+
+        _isDataReadyToSave.value = true
     }
 
     private fun processWeatherResponse(weatherData: WeatherResponse) {
@@ -149,6 +159,7 @@ class MainViewModel : ViewModel() {
     }
 
     private fun showError(message: String) {
+        _isDataReadyToSave.value = false
         _aqiStatus.value = message
         _aqiValue.value = "--"
         _lastUpdated.value = ""
