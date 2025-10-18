@@ -13,6 +13,7 @@ import androidx.fragment.app.viewModels
 import com.example.aircare.databinding.FragmentHomeBinding
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import android.widget.Toast
 
 class HomeFragment : Fragment() {
 
@@ -89,12 +90,15 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupObservers() {
+        // Observer untuk data cuaca dan lokasi
         mainViewModel.location.observe(viewLifecycleOwner) { binding.tvLocation.text = it }
         mainViewModel.lastUpdated.observe(viewLifecycleOwner) { binding.tvLastUpdated.text = it }
         mainViewModel.aqiValue.observe(viewLifecycleOwner) { binding.tvAqiValue.text = it }
         mainViewModel.aqiStatus.observe(viewLifecycleOwner) { binding.tvAqiStatus.text = it }
 
+        // Observer untuk elemen UI dinamis (warna, ikon, dll.)
         mainViewModel.aqiStatusBackground.observe(viewLifecycleOwner) { drawableId ->
+            // Pemeriksaan null/0 untuk keamanan
             if (drawableId != null && drawableId != 0) {
                 binding.tvAqiStatus.setBackgroundResource(drawableId)
             }
@@ -113,11 +117,20 @@ class HomeFragment : Fragment() {
             binding.guidelineIndicator.layoutParams = params
         }
 
+        // Observer untuk nilai polutan
         mainViewModel.pm25Value.observe(viewLifecycleOwner) { binding.pollutantPm25.tvPollutantValue.text = it }
         mainViewModel.coValue.observe(viewLifecycleOwner) { binding.pollutantCo.tvPollutantValue.text = it }
         mainViewModel.o3Value.observe(viewLifecycleOwner) { binding.pollutantO3.tvPollutantValue.text = it }
         mainViewModel.no2Value.observe(viewLifecycleOwner) { binding.pollutantNo2.tvPollutantValue.text = it }
         mainViewModel.so2Value.observe(viewLifecycleOwner) { binding.pollutantSo2.tvPollutantValue.text = it }
+
+
+        // Mengamati LiveData 'saveStatus' dari ViewModel.
+        mainViewModel.saveStatus.observe(viewLifecycleOwner) { event ->
+            event.getContentIfNotHandled()?.let { message ->
+                Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun setupActions() {

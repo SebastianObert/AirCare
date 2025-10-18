@@ -5,12 +5,20 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.aircare.databinding.FragmentHistoryBinding
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
 class HistoryFragment : Fragment() {
 
     private var _binding: FragmentHistoryBinding? = null
     private val binding get() = _binding!!
+
+    // Referensi ke node 'history' di Firebase Realtime Database
+    private val database = FirebaseDatabase.getInstance().getReference("history")
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -23,46 +31,51 @@ class HistoryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Buat dummy data
-        val dummyHistoryList = createDummyData()
+        // Setup RecyclerView
+        binding.rvHistory.layoutManager = LinearLayoutManager(context)
 
-        // Setup RecyclerView dengan Adapter
-        val historyAdapter = HistoryAdapter(dummyHistoryList)
-        binding.rvHistory.adapter = historyAdapter
+        // ValueEventListener akan terus "mendengarkan" perubahan data di Firebase.
+        // Setiap kali ada data baru, data dihapus, atau data diubah, kode di dalam onDataChange akan berjalan.
+        database.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val historyList = mutableListOf<HistoryItem>()
+
+                // Looping melalui semua "anak" (entri) di dalam node "history"
+                for (data in snapshot.children) {
+                    val item = data.getValue(HistoryItem::class.java)
+                    if (item != null) {
+                        historyList.add(item)
+                    }
+                }
+
+                // Cek apakah daftar riwayat kosong atau tidak
+                if (historyList.isEmpty()) {
+                    // Jika kosong, sembunyikan RecyclerView dan tampilkan teks
+                    binding.rvHistory.visibility = View.GONE
+                    binding.tvEmptyHistory.visibility = View.VISIBLE
+                } else {
+                    // Jika ada data, tampilkan RecyclerView dan sembunyikan teks
+                    binding.rvHistory.visibility = View.VISIBLE
+                    binding.tvEmptyHistory.visibility = View.GONE
+
+                    // Buat adapter baru dengan data dari Firebase
+                    // Kita urutkan berdasarkan timestamp (waktu) agar yang terbaru muncul di atas
+                    val historyAdapter = HistoryAdapter(historyList.sortedByDescending { it.timestamp })
+                    binding.rvHistory.adapter = historyAdapter
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Tampilkan pesan error jika gagal mengambil data dari Firebase
+                binding.rvHistory.visibility = View.GONE
+                binding.tvEmptyHistory.visibility = View.VISIBLE
+                binding.tvEmptyHistory.text = "Gagal memuat data riwayat."
+            }
+        })
     }
 
-    private fun createDummyData(): List<HistoryItem> {
-        return listOf(
-            HistoryItem(
-                date = "16 Okt 2025, 08:30",
-                location = "Jakarta Pusat",
-                aqiValue = "125",
-                aqiStatus = "Sedang",
-                statusColor = R.drawable.status_bg_orange
-            ),
-            HistoryItem(
-                date = "15 Okt 2025, 14:00",
-                location = "Bandung",
-                aqiValue = "75",
-                aqiStatus = "Cukup",
-                statusColor = R.drawable.status_bg_yellow
-            ),
-            HistoryItem(
-                date = "14 Okt 2025, 09:15",
-                location = "Surabaya",
-                aqiValue = "45",
-                aqiStatus = "Baik",
-                statusColor = R.drawable.status_bg_green
-            ),
-            HistoryItem(
-                date = "13 Okt 2025, 17:45",
-                location = "Medan",
-                aqiValue = "180",
-                aqiStatus = "Buruk",
-                statusColor = R.drawable.status_bg_red
-            )
-        )
-    }
+    // Fungsi createDummyData() tidak lagi dibutuhkan, bisa dihapus.
+    // private fun createDummyData(): List<HistoryItem> { ... }
 
     override fun onDestroyView() {
         super.onDestroyView()

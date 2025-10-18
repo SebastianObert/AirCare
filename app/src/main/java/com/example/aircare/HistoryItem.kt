@@ -1,9 +1,10 @@
 package com.example.aircare
 
 data class HistoryItem(
-    val date: String,
-    val location: String,
-    val aqiValue: String,
-    val aqiStatus: String,
-    val statusColor: Int
+    val id: String? = null,
+    val location: String? = null,
+    val aqiValue: String? = null,
+    val aqiStatus: String? = null,
+    val timestamp: Long? = null,
+    val statusColor: Int = R.drawable.status_bg_yellow 
 )

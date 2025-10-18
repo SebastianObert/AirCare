@@ -5,14 +5,20 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
 class MainViewModel : ViewModel() {
 
+    // Kunci API
     private val apiKey = "3edfd82f93e2e50f7497a083e88ece56"
 
+    // Referensi ke Firebase Realtime Database. "history" adalah nama 'tabel' utama kita.
+    private val databaseReference = FirebaseDatabase.getInstance().getReference("history")
+
+    // === LiveData untuk Status UI ===
     private val _location = MutableLiveData("Mencari lokasi...")
     val location: LiveData<String> = _location
 
@@ -48,8 +54,19 @@ class MainViewModel : ViewModel() {
     private val _so2Value = MutableLiveData("-- µg/m³")
     val so2Value: LiveData<String> = _so2Value
 
+    // LiveData untuk memberi feedback saat menyimpan
+    private val _saveStatus = MutableLiveData<Event<String>>()
+    val saveStatus: LiveData<Event<String>> = _saveStatus
+
+    // Variabel Internal untuk Menyimpan Data Terakhir
+    private var lastFetchedLocation: String? = null
+    private var lastFetchedAqiValue: String? = null
+    private var lastFetchedAqiStatus: String? = null
+
+    // Logika Utama
     fun updateLocationAndFetchData(latitude: Double, longitude: Double) {
-        _location.value = String.format("Lat: %.2f, Lon: %.2f", latitude, longitude)
+        lastFetchedLocation = String.format("Lat: %.2f, Lon: %.2f", latitude, longitude)
+        _location.value = lastFetchedLocation
         _aqiStatus.value = "Mengambil data..."
 
         viewModelScope.launch {
@@ -73,10 +90,14 @@ class MainViewModel : ViewModel() {
         val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
         _lastUpdated.value = "Diperbarui: ${sdf.format(Date())}"
 
-        _aqiValue.value = convertAqiValueToString(aqi)
-        _aqiStatus.value = convertAqiToStatus(aqi)
-        _aqiStatusBackground.value = convertAqiToDrawable(aqi)
+        // Simpan data terakhir untuk digunakan oleh fungsi simpan
+        lastFetchedAqiValue = convertAqiValueToString(aqi)
+        lastFetchedAqiStatus = convertAqiToStatus(aqi)
 
+        // Update LiveData untuk UI
+        _aqiValue.value = lastFetchedAqiValue
+        _aqiStatus.value = lastFetchedAqiStatus
+        _aqiStatusBackground.value = convertAqiToDrawable(aqi)
         _aqiIndicatorPosition.value = convertAqiToIndicatorPosition(aqi)
         _recommendationIcon.value = getRecommendationIcon(aqi)
         _recommendationText.value = getHealthRecommendation(aqi)
@@ -166,6 +187,47 @@ class MainViewModel : ViewModel() {
     }
 
     fun onSaveButtonClicked() {
-        _location.value = "Fitur simpan belum diimplementasikan"
+        if (lastFetchedAqiValue == null || lastFetchedAqiValue == "--") {
+            _saveStatus.value = Event("Gagal: Data kualitas udara belum ada.")
+            return
+        }
+
+        // Buat ID unik menggunakan push()
+        val historyId = databaseReference.push().key
+        if (historyId == null) {
+            _saveStatus.value = Event("Gagal membuat ID di database.")
+            return
+        }
+
+        // Siapkan objek data untuk dikirim ke Firebase
+        val historyItem = HistoryItem(
+            id = historyId,
+            location = lastFetchedLocation,
+            aqiValue = lastFetchedAqiValue,
+            aqiStatus = lastFetchedAqiStatus,
+            timestamp = System.currentTimeMillis()
+        )
+
+        // Kirim data ke Firebase
+        databaseReference.child(historyId).setValue(historyItem)
+            .addOnSuccessListener {
+                _saveStatus.value = Event("Data berhasil disimpan ke riwayat!")
+            }
+            .addOnFailureListener { exception ->
+                _saveStatus.value = Event("Gagal menyimpan data: ${exception.message}")
+            }
+    }
+    open class Event<out T>(private val content: T) {
+        var hasBeenHandled = false
+            private set
+
+        fun getContentIfNotHandled(): T? {
+            return if (hasBeenHandled) {
+                null
+            } else {
+                hasBeenHandled = true
+                content
+            }
+        }
     }
 }

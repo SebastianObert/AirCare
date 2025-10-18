@@ -4,6 +4,8 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aircare.databinding.ItemHistoryBinding
+import java.text.SimpleDateFormat
+import java.util.*
 
 class HistoryAdapter(private val items: List<HistoryItem>) :
     RecyclerView.Adapter<HistoryAdapter.HistoryViewHolder>() {
@@ -18,7 +20,9 @@ class HistoryAdapter(private val items: List<HistoryItem>) :
     override fun onBindViewHolder(holder: HistoryViewHolder, position: Int) {
         val item = items[position]
         holder.binding.apply {
-            tvHistoryDate.text = item.date
+            val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
+            tvHistoryDate.text = sdf.format(Date(item.timestamp ?: 0))
+
             tvHistoryLocation.text = item.location
             tvHistoryAqiValue.text = item.aqiValue
             viewStatusColor.setBackgroundResource(item.statusColor)
