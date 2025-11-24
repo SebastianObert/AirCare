@@ -9,6 +9,10 @@
         android:icon="@drawable/ic_history"
         android:title="Riwayat" />
     <item
+        android:id="@+id/mapFragment"
+        android:icon="@drawable/ic_map"
+        android:title="Peta" />
+    <item
         android:id="@+id/profileFragment"
         android:icon="@drawable/ic_profile"
         android:title="Profil" />
