@@ -155,10 +155,6 @@ class HomeFragment : Fragment() {
         binding.btnSave.setOnClickListener {
             mainViewModel.onSaveButtonClicked()
         }
-        binding.fabOpenMap.setOnClickListener {
-            // Menggunakan NavController untuk pindah ke MapFragment
-            findNavController().navigate(R.id.action_homeFragment_to_mapFragment)
-        }
     }
 
     //  Periksa izin lokasi
