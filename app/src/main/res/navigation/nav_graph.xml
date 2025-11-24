@@ -1,21 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
     app:startDestination="@id/homeFragment">
 
+    <!-- Fragment untuk Halaman Utama -->
     <fragment
         android:id="@+id/homeFragment"
         android:name="com.example.aircare.HomeFragment"
         android:label="fragment_home"
-        tools:layout="@layout/fragment_home" />
+        tools:layout="@layout/fragment_home" >
+
+        <!-- Action untuk navigasi dari Home ke Map, SEKARANG ADA DI DALAM homeFragment -->
+        <action
+            android:id="@+id/action_homeFragment_to_mapFragment"
+            app:destination="@id/mapFragment" />
+
+    </fragment> <!-- Tag penutup untuk homeFragment sekarang di sini -->
+
+    <!-- Fragment untuk Halaman Peta -->
+    <fragment
+        android:id="@+id/mapFragment"
+        android:name="com.example.aircare.MapFragment"
+        android:label="fragment_map"
+        tools:layout="@layout/fragment_map" />
+
+    <!-- Fragment untuk Halaman Riwayat -->
     <fragment
         android:id="@+id/historyFragment"
         android:name="com.example.aircare.HistoryFragment"
         android:label="fragment_history"
         tools:layout="@layout/fragment_history" />
 
+    <!-- Fragment untuk Halaman Profil -->
     <fragment
         android:id="@+id/profileFragment"
         android:name="com.example.aircare.ProfileFragment"
@@ -28,12 +45,14 @@
 
     </fragment>
 
+    <!-- Fragment untuk Halaman Pengaturan -->
     <fragment
         android:id="@+id/settingsFragment"
         android:name="com.example.aircare.ui.settings.SettingsFragment"
         android:label="fragment_settings"
         tools:layout="@layout/fragment_settings" />
 
+    <!-- Fragment untuk Halaman Edit Profil -->
     <fragment
         android:id="@+id/editProfileFragment"
         android:name="com.example.aircare.EditProfileFragment"

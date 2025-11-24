@@ -13,6 +13,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.example.aircare.databinding.FragmentHomeBinding
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -27,16 +28,15 @@ class HomeFragment : Fragment() {
     private val mainViewModel: MainViewModel by viewModels()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    private val requestPermissionLauncher =
-        registerForActivityResult(
-            androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
-        ) { isGranted: Boolean ->
-            if (isGranted) {
-                getLastLocation()
-            } else {
-                binding.tvLocation.text = "Izin lokasi ditolak"
-            }
+    private val requestPermissionLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            getLastLocation()
+        } else {
+            binding.tvLocation.text = "Izin lokasi ditolak"
         }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -154,6 +154,10 @@ class HomeFragment : Fragment() {
     private fun setupActions() {
         binding.btnSave.setOnClickListener {
             mainViewModel.onSaveButtonClicked()
+        }
+        binding.fabOpenMap.setOnClickListener {
+            // Menggunakan NavController untuk pindah ke MapFragment
+            findNavController().navigate(R.id.action_homeFragment_to_mapFragment)
         }
     }
 
