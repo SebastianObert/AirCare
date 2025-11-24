@@ -15,9 +15,8 @@ import java.util.*
 class MainViewModel : ViewModel() {
 
     // Kunci API
-    private val apiKey = "3edfd82f93e2e50f7497a083e88ece56" // Sebaiknya simpan di tempat yang lebih aman
+    private val apiKey = "3edfd82f93e2e50f7497a083e88ece56"
 
-    // Fungsi untuk mendapatkan referensi database SPESIFIK untuk pengguna yang login
     private fun getDatabaseReference(): DatabaseReference? {
         // Dapatkan ID unik pengguna dari Firebase Auth
         val userId = FirebaseAuth.getInstance().currentUser?.uid

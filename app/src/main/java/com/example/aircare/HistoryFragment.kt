@@ -22,6 +22,9 @@ class HistoryFragment : Fragment() {
     private val database: DatabaseReference? =
         userId?.let { FirebaseDatabase.getInstance().getReference("history").child(it) }
 
+    // SIMPAN LISTENER AGAR BISA DI-REMOVE
+    private var valueEventListener: ValueEventListener? = null
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -43,35 +46,48 @@ class HistoryFragment : Fragment() {
 
     private fun listenToDatabase() {
         if (database == null) {
-            binding.tvEmptyHistory.text = "Anda belum login."
-            binding.tvEmptyHistory.visibility = View.VISIBLE
-            binding.rvHistory.visibility = View.GONE
+            _binding?.let {
+                it.tvEmptyHistory.text = "Anda belum login."
+                it.tvEmptyHistory.visibility = View.VISIBLE
+                it.rvHistory.visibility = View.GONE
+            }
             return
         }
 
-        database.addValueEventListener(object : ValueEventListener {
+        valueEventListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+
+                if (_binding == null || !isAdded) return  // FRAGMENT SUDAH HANCUR
+
                 val tempList = mutableListOf<HistoryItem>()
                 for (data in snapshot.children) {
-                    val item = data.getValue(HistoryItem::class.java)
-                    if (item != null) tempList.add(item)
+                    data.getValue(HistoryItem::class.java)?.let { tempList.add(it) }
                 }
 
                 if (tempList.isEmpty()) {
-                    binding.tvEmptyHistory.visibility = View.VISIBLE
-                    binding.rvHistory.visibility = View.GONE
+                    _binding?.apply {
+                        tvEmptyHistory.visibility = View.VISIBLE
+                        rvHistory.visibility = View.GONE
+                    }
                 } else {
-                    binding.tvEmptyHistory.visibility = View.GONE
-                    binding.rvHistory.visibility = View.VISIBLE
-                    adapter.updateList(tempList.sortedByDescending { it.timestamp })
+                    _binding?.apply {
+                        tvEmptyHistory.visibility = View.GONE
+                        rvHistory.visibility = View.VISIBLE
+                        adapter.updateList(tempList.sortedByDescending { it.timestamp })
+                    }
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                binding.tvEmptyHistory.text = "Gagal memuat data: ${error.message}"
-                binding.tvEmptyHistory.visibility = View.VISIBLE
+                if (_binding == null || !isAdded) return  // CEGAH NPE
+                _binding?.tvEmptyHistory?.apply {
+                    text = "Gagal memuat data: ${error.message}"
+                    visibility = View.VISIBLE
+                }
             }
-        })
+        }
+
+        database.addValueEventListener(valueEventListener!!)
     }
 
     private fun deleteItem(item: HistoryItem) {
@@ -86,6 +102,13 @@ class HistoryFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+
+        // REMOVE LISTENER UNTUK MENCEGAH CALLBACK SETELAH VIEW HILANG
+        if (database != null && valueEventListener != null) {
+            database.removeEventListener(valueEventListener!!)
+        }
+
+        valueEventListener = null
         _binding = null
     }
 }
