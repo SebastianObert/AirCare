@@ -2,6 +2,7 @@ package com.example.aircare
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.location.Geocoder
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -16,6 +17,9 @@ import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.example.aircare.databinding.FragmentHomeBinding
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import java.util.*
@@ -54,6 +58,8 @@ class HomeFragment : Fragment() {
         setupStaticViews()
         setupObservers()
         setupActions()
+        val forecastData = setupForecast()
+        setupChart(forecastData)
 
         checkLocationPermission()
     }
@@ -155,6 +161,53 @@ class HomeFragment : Fragment() {
         binding.btnSave.setOnClickListener {
             mainViewModel.onSaveButtonClicked()
         }
+    }
+
+    private fun setupForecast(): List<Forecast> {
+        val forecastData = listOf(
+            Forecast("Senin", R.drawable.ic_weather_cloudy, "30°", "24°"),
+            Forecast("Selasa", R.drawable.ic_weather_rainy, "28°", "23°"),
+            Forecast("Rabu", R.drawable.ic_weather_storm, "27°", "22°"),
+            Forecast("Kamis", R.drawable.ic_weather_cloudy, "32°", "26°"),
+            Forecast("Jumat", R.drawable.ic_recommend_good, "30°", "24°"),
+            Forecast("Sabtu", R.drawable.ic_weather_rainy, "29°", "24°"),
+            Forecast("Minggu", R.drawable.ic_recommend_good, "31°", "25°")
+        )
+
+        val forecastAdapter = ForecastAdapter(forecastData)
+        binding.rvForecast.adapter = forecastAdapter
+        return forecastData
+    }
+
+    private fun setupChart(forecastData: List<Forecast>) {
+        val entriesMax = forecastData.mapIndexed { index, forecast ->
+            Entry(index.toFloat(), forecast.tempMax.removeSuffix("°").toFloat())
+        }
+        val entriesMin = forecastData.mapIndexed { index, forecast ->
+            Entry(index.toFloat(), forecast.tempMin.removeSuffix("°").toFloat())
+        }
+
+        val lineDataSetMax = LineDataSet(entriesMax, "Suhu Maksimum").apply {
+            color = Color.RED
+            valueTextColor = Color.BLACK
+            setCircleColor(Color.RED)
+        }
+
+        val lineDataSetMin = LineDataSet(entriesMin, "Suhu Minimum").apply {
+            color = Color.BLUE
+            valueTextColor = Color.BLACK
+            setCircleColor(Color.BLUE)
+        }
+
+        val lineData = LineData(lineDataSetMax, lineDataSetMin)
+        binding.chartForecast.data = lineData
+
+        binding.chartForecast.description.isEnabled = false
+        binding.chartForecast.xAxis.valueFormatter = com.github.mikephil.charting.formatter.IndexAxisValueFormatter(forecastData.map { it.day })
+        binding.chartForecast.xAxis.position = com.github.mikephil.charting.components.XAxis.XAxisPosition.BOTTOM
+        binding.chartForecast.axisRight.isEnabled = false
+
+        binding.chartForecast.invalidate() // refresh
     }
 
     //  Periksa izin lokasi
