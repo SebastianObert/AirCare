@@ -14,18 +14,19 @@ class MapViewModel(private val repository: AirQualityRepository) : ViewModel() {
 
     fun fetchAirQualityDataForMap() {
         viewModelScope.launch {
-            // Panggil Repository untuk mendapatkan data dari API
-            val result = repository.getAirQualityDataForBounds(/* kirim batas peta saat ini */)
+            // Panggil Repository untuk mengambil data REAL dari API
+            // Ini akan memakan waktu sedikit karena melakukan banyak request network
+            val realDataList = repository.getRealAirQualityData()
 
-            if (result.isSuccess) {
-                val apiResponse = result.getOrNull()
-                // Konversi respons API menjadi List<WeightedLatLng>
-                val weightedData = apiResponse?.map {
-                    // "Intensity" atau "bobot" di sini adalah nilai AQI.
-                    // Semakin tinggi AQI, semakin "panas" titiknya di heatmap.
-                    WeightedLatLng(LatLng(it.lat, it.lon), it.aqi.toDouble())
+            if (realDataList.isNotEmpty()) {
+                val weightedData = realDataList.map { dataPoint ->
+                    // Masukkan Lat, Lon, dan Intensitas (PM2.5 atau AQI) ke WeightedLatLng
+                    WeightedLatLng(
+                        LatLng(dataPoint.lat, dataPoint.lon),
+                        dataPoint.aqi.toDouble()
+                    )
                 }
-                airQualityDataPoints.postValue(weightedData ?: emptyList())
+                airQualityDataPoints.postValue(weightedData)
             }
         }
     }

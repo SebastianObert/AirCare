@@ -127,17 +127,17 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun addHeatmap(dataPoints: List<WeightedLatLng>) {
-        // 1. Buat HeatmapTileProvider dengan data yang didapat
         val provider = HeatmapTileProvider.Builder()
-            .weightedData(dataPoints) // weightedData menerima Collection<WeightedLatLng>
-            .radius(50) // Atur radius blur untuk setiap titik (sesuaikan sesuai kebutuhan)
+            .weightedData(dataPoints)
+            .radius(40) // Radius bisa dikecilkan sedikit jika titiknya rapat
+            .opacity(0.7) // Transparansi
             .build()
 
-        // 2. Tambahkan provider sebagai tile overlay di atas peta
+        // Bersihkan overlay lama jika ada (opsional, jika Anda refresh map)
+        googleMap?.clear()
+
         googleMap?.addTileOverlay(TileOverlayOptions().tileProvider(provider))
     }
-
-    // ... (Lifecycle methods: onResume, onStart, etc.)
 
     override fun onResume() {
         super.onResume()
