@@ -61,8 +61,30 @@ class HomeFragment : Fragment() {
         val forecastData = setupForecast()
         setupChart(forecastData)
 
-        checkLocationPermission()
+        // Handle the result from SearchLocationFragment
+        findNavController().currentBackStackEntry?.savedStateHandle?.getLiveData<Bundle>("location_data")
+            ?.observe(viewLifecycleOwner) { result ->
+                if (result.getBoolean("useCurrentLocation")) {
+                    checkLocationPermission()
+                } else {
+                    val latitude = result.getDouble("latitude")
+                    val longitude = result.getDouble("longitude")
+                    val locationName = result.getString("locationName")
+
+                    if (locationName != null) {
+                        mainViewModel.updateLocationAndFetchData(latitude, longitude, locationName)
+                    }
+                }
+                // Clear the result to prevent it from being triggered again
+                findNavController().currentBackStackEntry?.savedStateHandle?.remove<Bundle>("location_data")
+            }
+
+        // Only get current location if it has not been fetched before.
+        if (!mainViewModel.isInitialLocationFetched) {
+            checkLocationPermission()
+        }
     }
+
 
     private fun setupStaticViews() {
         binding.pollutantPm25.tvPollutantName.text = "PM2.5"
@@ -160,6 +182,9 @@ class HomeFragment : Fragment() {
     private fun setupActions() {
         binding.btnSave.setOnClickListener {
             mainViewModel.onSaveButtonClicked()
+        }
+        binding.changeLocationContainer.setOnClickListener {
+            findNavController().navigate(R.id.action_homeFragment_to_searchLocationFragment)
         }
     }
 

@@ -41,6 +41,37 @@
                 app:layout_constraintTop_toTopOf="parent"
                 tools:text="Tangerang, Indonesia" />
 
+            <LinearLayout
+                android:id="@+id/change_location_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/tv_location"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground"
+                android:padding="4dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ganti lokasi..."
+                    android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                    android:alpha="0.7"/>
+
+                <ImageView
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="4dp"
+                    android:src="@android:drawable/ic_menu_search"
+                    app:tint="?attr/colorOnSurface"
+                    android:alpha="0.7" />
+
+            </LinearLayout>
+
             <TextView
                 android:id="@+id/tv_last_updated"
                 android:layout_width="wrap_content"
@@ -50,7 +81,7 @@
                 android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/tv_location"
+                app:layout_constraintTop_toBottomOf="@id/change_location_container"
                 tools:text="Diperbarui: 10:30" />
 
             <!-- AQI Card - Hero Section -->

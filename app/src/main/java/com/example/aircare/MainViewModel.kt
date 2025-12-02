@@ -17,6 +17,8 @@ class MainViewModel : ViewModel() {
     // Kunci API
     private val apiKey = "3edfd82f93e2e50f7497a083e88ece56"
 
+    var isInitialLocationFetched = false
+
     private fun getDatabaseReference(): DatabaseReference? {
         // Dapatkan ID unik pengguna dari Firebase Auth
         val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -90,6 +92,7 @@ class MainViewModel : ViewModel() {
 
     // Logika Utama
     fun updateLocationAndFetchData(latitude: Double, longitude: Double, locationName: String) {
+        isInitialLocationFetched = true
         _location.value = locationName
         _aqiStatus.value = "Mengambil data..."
 

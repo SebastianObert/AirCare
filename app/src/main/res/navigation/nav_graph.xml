@@ -15,6 +15,9 @@
         <action
             android:id="@+id/action_homeFragment_to_mapFragment"
             app:destination="@id/mapFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_searchLocationFragment"
+            app:destination="@id/searchLocationFragment" />
 
     </fragment> <!-- Tag penutup untuk homeFragment sekarang di sini -->
 
@@ -58,5 +61,12 @@
         android:name="com.example.aircare.EditProfileFragment"
         android:label="fragment_edit_profile"
         tools:layout="@layout/fragment_edit_profile" />
+
+    <!-- Fragment untuk Halaman Pencarian Lokasi -->
+    <fragment
+        android:id="@+id/searchLocationFragment"
+        android:name="com.example.aircare.SearchLocationFragment"
+        android:label="fragment_search_location"
+        tools:layout="@layout/fragment_search_location" />
 
 </navigation>
