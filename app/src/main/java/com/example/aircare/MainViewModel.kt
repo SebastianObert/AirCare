@@ -89,6 +89,9 @@ class MainViewModel : ViewModel() {
     private var lastFetchedAqiValue: String? = null
     private var lastFetchedAqiStatus: String? = null
     private var lastFetchedStatusColor: Int? = null
+    private var lastFetchedWeatherTemp: String? = null
+    private var lastFetchedWeatherCondition: String? = null
+
 
     // Logika Utama
     fun updateLocationAndFetchData(latitude: Double, longitude: Double, locationName: String) {
@@ -154,11 +157,16 @@ class MainViewModel : ViewModel() {
     private fun processWeatherResponse(weatherData: WeatherResponse) {
         if (weatherData.weather.isNotEmpty()) {
             val weatherInfo = weatherData.weather[0]
-            _weatherDescription.value = weatherInfo.description.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+            val processedDescription = weatherInfo.description.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+            _weatherDescription.value = processedDescription
             _weatherIconUrl.value = "https://openweathermap.org/img/wn/${weatherInfo.icon}@2x.png"
+            lastFetchedWeatherCondition = processedDescription // Store for saving
         }
-        _temperature.value = String.format(Locale.getDefault(), "%.1f°C", weatherData.main.temp)
+        val formattedTemp = String.format(Locale.getDefault(), "%.1f°C", weatherData.main.temp)
+        _temperature.value = formattedTemp
+        lastFetchedWeatherTemp = formattedTemp // Store for saving
     }
+
 
     private fun showError(message: String) {
         _isDataReadyToSave.value = false
@@ -176,6 +184,8 @@ class MainViewModel : ViewModel() {
         _temperature.value = "--°C"
         _weatherDescription.value = "Gagal memuat"
         _weatherIconUrl.value = ""
+        lastFetchedWeatherTemp = null
+        lastFetchedWeatherCondition = null
     }
 
     private fun convertAqiToIndicatorPosition(aqi: Int): Float {
@@ -267,7 +277,9 @@ class MainViewModel : ViewModel() {
             aqiValue = lastFetchedAqiValue,
             aqiStatus = lastFetchedAqiStatus,
             timestamp = System.currentTimeMillis(),
-            statusColor = lastFetchedStatusColor ?: R.drawable.status_bg_yellow
+            statusColor = lastFetchedStatusColor ?: R.drawable.status_bg_yellow,
+            weatherTemp = lastFetchedWeatherTemp,
+            weatherCondition = lastFetchedWeatherCondition
         )
 
         database.child(historyId).setValue(historyItem)

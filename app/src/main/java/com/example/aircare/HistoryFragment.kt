@@ -7,7 +7,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.aircare.databinding.DialogAddNoteBinding
 import com.example.aircare.databinding.FragmentHistoryBinding
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.components.XAxis
@@ -15,6 +17,7 @@ import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
 import com.github.mikephil.charting.data.BarEntry
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 
@@ -24,6 +27,7 @@ class HistoryFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var adapter: HistoryAdapter
     private val list = mutableListOf<HistoryItem>()
+    private val viewModel: HistoryViewModel by viewModels()
 
     private val userId = FirebaseAuth.getInstance().currentUser?.uid
     private val database: DatabaseReference? =
@@ -42,7 +46,9 @@ class HistoryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        adapter = HistoryAdapter(list) { item -> deleteItem(item) }
+        adapter = HistoryAdapter(list, { item -> deleteItem(item) }) { item ->
+            showAddNoteDialog(item)
+        }
 
         binding.rvHistory.layoutManager = LinearLayoutManager(context)
         binding.rvHistory.adapter = adapter
@@ -51,6 +57,38 @@ class HistoryFragment : Fragment() {
         setupBarChart(binding.barChart)
 
         listenToDatabase()
+    }
+
+    private fun showAddNoteDialog(historyItem: HistoryItem) {
+        val dialogBinding = DialogAddNoteBinding.inflate(LayoutInflater.from(context))
+
+        dialogBinding.etNote.setText(historyItem.note)
+        when (historyItem.category) {
+            "Alergi" -> dialogBinding.chipGroupCategory.check(R.id.chipAlergi)
+            "Penyakit" -> dialogBinding.chipGroupCategory.check(R.id.chipPenyakit)
+            "Lainnya" -> dialogBinding.chipGroupCategory.check(R.id.chipLainnya)
+        }
+
+        val dialog = MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogBinding.root)
+            .setTitle("Catatan Pribadi")
+            .setPositiveButton("Simpan") { _, _ ->
+                val noteText = dialogBinding.etNote.text.toString()
+                val selectedChipId = dialogBinding.chipGroupCategory.checkedChipId
+                val categoryText = when (selectedChipId) {
+                    R.id.chipAlergi -> "Alergi"
+                    R.id.chipPenyakit -> "Penyakit"
+                    else -> "Lainnya"
+                }
+
+                historyItem.note = noteText
+                historyItem.category = categoryText
+                viewModel.saveNoteForHistoryItem(historyItem)
+            }
+            .setNegativeButton("Batal", null)
+            .create()
+
+        dialog.show()
     }
 
     private fun setupBarChart(barChart: BarChart) {

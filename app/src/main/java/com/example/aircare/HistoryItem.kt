@@ -6,5 +6,9 @@ data class HistoryItem(
     val aqiValue: String? = null,
     val aqiStatus: String? = null,
     val timestamp: Long? = null,
-    val statusColor: Int = R.drawable.status_bg_yellow 
+    val statusColor: Int = R.drawable.status_bg_yellow,
+    var note: String? = null,
+    var category: String? = null,
+    val weatherTemp: String? = null,
+    val weatherCondition: String? = null
 )
