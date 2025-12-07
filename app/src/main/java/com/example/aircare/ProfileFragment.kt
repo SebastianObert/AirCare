@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -32,82 +31,85 @@ import java.util.*
 class ProfileFragment : Fragment() {
 
     private var _binding: FragmentProfileBinding? = null
-    // Ganti akses ke binding agar lebih aman dan tidak menyebabkan crash
-    private val binding get() = _binding
+    private val binding get() = _binding!!
 
-    // Referensi Firebase dan Klien Lokasi
+    // Firebase & Location Config
     private lateinit var auth: FirebaseAuth
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var userRef: DatabaseReference
     private lateinit var locationsRef: DatabaseReference
 
-    // --- PERBAIKAN: Deklarasikan ValueEventListener sebagai properti ---
+    // Adapter & Data
+    private lateinit var savedLocationAdapter: SavedLocationAdapter
+    private val savedLocationsList = mutableListOf<SavedLocation>()
+
+    // --- Listeners (Disimpan sebagai properti agar bersih) ---
     private val userValueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
-            // Pengaman: pastikan fragment masih terpasang dan binding tidak null
-            if (!isAdded || binding == null) return
-
+            if (_binding == null) return
             val user = snapshot.getValue(User::class.java)
             if (user != null) {
-                binding?.tvName?.text = user.name
+                binding.tvName.text = user.name
                 val sdf = SimpleDateFormat("MMM yyyy", Locale.getDefault())
-                binding?.tvJoined?.text = "Bergabung sejak ${sdf.format(Date(user.memberSince ?: 0))}"
+                // Menggunakan format string resource atau text biasa
+                binding.tvJoined.text = "Member sejak ${sdf.format(Date(user.memberSince ?: 0))}"
             }
         }
         override fun onCancelled(error: DatabaseError) {
-            if (!isAdded || context == null) return
-            Toast.makeText(context, "Gagal memuat data profil.", Toast.LENGTH_SHORT).show()
+            context?.let { Toast.makeText(it, "Gagal memuat data profil", Toast.LENGTH_SHORT).show() }
         }
     }
 
     private val locationsValueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
-            if (!isAdded || binding == null) return
-
+            if (_binding == null) return
             savedLocationsList.clear()
             snapshot.children.mapNotNullTo(savedLocationsList) { it.getValue(SavedLocation::class.java) }
             savedLocationAdapter.notifyDataSetChanged()
         }
         override fun onCancelled(error: DatabaseError) {
-            if (!isAdded || context == null) return
-            Toast.makeText(context, "Gagal memuat lokasi tersimpan.", Toast.LENGTH_SHORT).show()
+            context?.let { Toast.makeText(it, "Gagal memuat lokasi", Toast.LENGTH_SHORT).show() }
         }
     }
 
-    // Variabel untuk Adapter dan List Lokasi
-    private lateinit var savedLocationAdapter: SavedLocationAdapter
-    private val savedLocationsList = mutableListOf<SavedLocation>()
-
+    // --- Launchers untuk Kamera & Izin ---
     private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let {
-            if (!isAdded) return@let // Pengaman
-            Glide.with(this).load(it).circleCrop().into(binding!!.ivProfilePicture)
-            saveImageUriToPrefs(it)
+            if (_binding != null) {
+                Glide.with(this).load(it).circleCrop().into(binding.ivProfilePicture)
+                saveImageUriToPrefs(it)
+            }
         }
     }
 
     private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
         bitmap?.let {
-            if (!isAdded) return@let // Pengaman
-            Glide.with(this).load(it).circleCrop().into(binding!!.ivProfilePicture)
-            saveBitmapToInternalStorage(it)
+            if (_binding != null) {
+                Glide.with(this).load(it).circleCrop().into(binding.ivProfilePicture)
+                saveBitmapToInternalStorage(it)
+            }
         }
     }
 
     private val cameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) cameraLauncher.launch(null) else Toast.makeText(context, "Izin kamera ditolak", Toast.LENGTH_SHORT).show()
+        if (isGranted) cameraLauncher.launch(null)
+        else Toast.makeText(context, "Izin kamera diperlukan untuk mengambil foto", Toast.LENGTH_SHORT).show()
     }
+
     private val locationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) saveCurrentLocationAsHome() else Toast.makeText(context, "Izin lokasi ditolak", Toast.LENGTH_LONG).show()
+        if (isGranted) saveCurrentLocationAsHome()
+        else Toast.makeText(context, "Izin lokasi diperlukan untuk menyimpan rumah", Toast.LENGTH_LONG).show()
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentProfileBinding.inflate(inflater, container, false)
-        return _binding!!.root
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // Inisialisasi Firebase & Auth
         auth = FirebaseAuth.getInstance()
         val userId = auth.currentUser?.uid
         if (userId == null) {
@@ -119,46 +121,47 @@ class ProfileFragment : Fragment() {
         locationsRef = FirebaseDatabase.getInstance().getReference("saved_locations").child(userId)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
 
-        setupRecyclerView()
-        loadUserData()
-        loadSavedLocations()
-        loadProfilePicture()
-        setupClickListeners()
+        setupUI()
+        loadData()
     }
 
-    private fun setupRecyclerView() {
+    private fun setupUI() {
+        // Setup RecyclerView
         savedLocationAdapter = SavedLocationAdapter(savedLocationsList) { location -> deleteLocation(location) }
-        binding?.rvSavedLocations?.layoutManager = LinearLayoutManager(context)
-        binding?.rvSavedLocations?.adapter = savedLocationAdapter
+        binding.rvSavedLocations.apply {
+            layoutManager = LinearLayoutManager(context)
+            adapter = savedLocationAdapter
+        }
+
+        // Setup Buttons Click
+        binding.ivProfilePicture.setOnClickListener { showPhotoSourceDialog() }
+        binding.btnEditProfile.setOnClickListener {
+            // Pastikan ID action di nav_graph sesuai
+            try {
+                findNavController().navigate(R.id.action_profileFragment_to_editProfileFragment)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Navigasi belum diatur", Toast.LENGTH_SHORT).show()
+            }
+        }
+        binding.btnSaveHomeLocation.setOnClickListener { saveCurrentLocationAsHome() }
+
+        // Set email statis dari Auth
+        binding.tvEmail.text = auth.currentUser?.email
+
+        loadProfilePicture()
     }
 
-    private fun loadUserData() {
-        binding?.tvEmail?.text = auth.currentUser?.email
-        // --- PERBAIKAN: Gunakan listener yang sudah dideklarasikan ---
+    private fun loadData() {
         userRef.addValueEventListener(userValueEventListener)
-    }
-
-    private fun loadSavedLocations() {
-        // --- PERBAIKAN: Gunakan listener yang sudah dideklarasikan ---
         locationsRef.addValueEventListener(locationsValueEventListener)
     }
 
-    private fun setupClickListeners() {
-        binding?.ivProfilePicture?.setOnClickListener { showPhotoSourceDialog() }
-        binding?.btnEditProfile?.setOnClickListener { findNavController().navigate(R.id.action_profileFragment_to_editProfileFragment) }
-        binding?.btnSaveHomeLocation?.setOnClickListener { saveCurrentLocationAsHome() }
-        binding?.btnLogout?.setOnClickListener {
-            auth.signOut()
-            goToAuthActivity()
-        }
-    }
+    // --- Logika Fungsional ---
 
-    // ... (Fungsi-fungsi lain seperti showPhotoSourceDialog, saveImageUriToPrefs, dll. tetap sama) ...
-    // Pastikan semua akses `binding` diubah menjadi `binding?`
     private fun showPhotoSourceDialog() {
-        val options = arrayOf("Ambil Foto dari Kamera", "Pilih dari Galeri")
+        val options = arrayOf("Kamera", "Galeri")
         AlertDialog.Builder(requireContext())
-            .setTitle("Ubah Foto Profil")
+            .setTitle("Ganti Foto Profil")
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> checkCameraPermissionAndLaunch()
@@ -169,11 +172,56 @@ class ProfileFragment : Fragment() {
     }
 
     private fun checkCameraPermissionAndLaunch() {
-        when {
-            ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED -> cameraLauncher.launch(null)
-            else -> cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            cameraLauncher.launch(null)
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
+
+    private fun saveCurrentLocationAsHome() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            return
+        }
+
+        val userId = auth.currentUser?.uid ?: return
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                val dbRef = FirebaseDatabase.getInstance().getReference("saved_locations").child(userId)
+                val locationId = dbRef.push().key ?: return@addOnSuccessListener
+                // Menggunakan timestamp sebagai ID unik sederhana jika diperlukan nama custom nanti
+                val homeLocation = SavedLocation(locationId, "Rumah (${SimpleDateFormat("dd/MM", Locale.getDefault()).format(Date())})", location.latitude, location.longitude)
+
+                dbRef.child(locationId).setValue(homeLocation).addOnSuccessListener {
+                    if (_binding != null) Toast.makeText(context, "Lokasi Rumah berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(context, "Lokasi tidak ditemukan. Coba buka Google Maps dulu.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun deleteLocation(location: SavedLocation) {
+        val userId = auth.currentUser?.uid ?: return
+        val locationId = location.id ?: return
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Hapus Lokasi")
+            .setMessage("Hapus '${location.name}' dari daftar?")
+            .setPositiveButton("Hapus") { _, _ ->
+                FirebaseDatabase.getInstance().getReference("saved_locations")
+                    .child(userId).child(locationId)
+                    .removeValue()
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "Lokasi dihapus", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    // --- Utilitas Gambar ---
 
     private fun saveImageUriToPrefs(uri: Uri?) {
         val sharedPref = activity?.getPreferences(Context.MODE_PRIVATE) ?: return
@@ -199,56 +247,12 @@ class ProfileFragment : Fragment() {
     private fun loadProfilePicture() {
         val sharedPref = activity?.getPreferences(Context.MODE_PRIVATE)
         val path = sharedPref?.getString("profile_image_path_${auth.currentUser?.uid}", null)
-
-        if (path != null) {
-            // Pengaman: pastikan fragment masih terpasang
-            if (!isAdded) return
-            Glide.with(this)
-                .load(Uri.parse(path))
-                .circleCrop()
-                .into(binding!!.ivProfilePicture)
+        if (path != null && _binding != null) {
+            Glide.with(this).load(Uri.parse(path)).circleCrop().into(binding.ivProfilePicture)
         }
-    }
-
-    private fun saveCurrentLocationAsHome() {
-        val userId = auth.currentUser?.uid ?: return
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            return
-        }
-        try {
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                if (location != null) {
-                    val dbRef = FirebaseDatabase.getInstance().getReference("saved_locations").child(userId)
-                    val locationId = dbRef.push().key ?: return@addOnSuccessListener
-                    val homeLocation = SavedLocation(locationId, "Rumah", location.latitude, location.longitude)
-                    dbRef.child(locationId).setValue(homeLocation).addOnSuccessListener {
-                        if (!isAdded) return@addOnSuccessListener
-                        Toast.makeText(context, "Lokasi 'Rumah' berhasil disimpan!", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    if (!isAdded) return@addOnSuccessListener
-                    Toast.makeText(context, "Gagal mendapatkan lokasi. Aktifkan GPS.", Toast.LENGTH_LONG).show()
-                }
-            }
-        } catch (e: SecurityException) {
-            // Error ditangani oleh pengecekan izin
-        }
-    }
-
-    private fun deleteLocation(location: SavedLocation) {
-        val userId = auth.currentUser?.uid ?: return
-        val locationId = location.id ?: return
-        FirebaseDatabase.getInstance().getReference("saved_locations").child(userId).child(locationId)
-            .removeValue()
-            .addOnSuccessListener {
-                if (!isAdded) return@addOnSuccessListener
-                Toast.makeText(context, "'${location.name}' berhasil dihapus.", Toast.LENGTH_SHORT).show()
-            }
     }
 
     private fun goToAuthActivity() {
-        if (!isAdded) return
         val intent = Intent(requireActivity(), AuthActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }

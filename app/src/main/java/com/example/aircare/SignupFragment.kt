@@ -15,11 +15,9 @@ import com.google.firebase.database.FirebaseDatabase
 
 class SignupFragment : Fragment() {
 
-    // Setup ViewBinding
     private var _binding: FragmentSignupBinding? = null
     private val binding get() = _binding!!
 
-    // Deklarasi instance Firebase Authentication
     private lateinit var auth: FirebaseAuth
 
     override fun onCreateView(
@@ -33,15 +31,12 @@ class SignupFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Inisialisasi Firebase Auth
         auth = FirebaseAuth.getInstance()
 
-        // Menambahkan aksi klik pada tombol Daftar
         binding.btnSignup.setOnClickListener {
             handleSignup()
         }
 
-        // Menambahkan aksi klik pada teks untuk kembali ke halaman Login
         binding.tvGoToLogin.setOnClickListener {
             findNavController().navigate(R.id.action_signupFragment_to_loginFragment)
         }
@@ -49,10 +44,17 @@ class SignupFragment : Fragment() {
 
     private fun handleSignup() {
         // Ambil data dari EditText
+        // PERBAIKAN: Ambil Nama juga jika ada inputnya
+        val nameInput = binding.etName.text.toString().trim()
         val email = binding.etEmail.text.toString().trim()
         val password = binding.etPassword.text.toString().trim()
 
         // Validasi input
+        if (nameInput.isEmpty()) {
+            binding.etName.error = "Nama Lengkap harus diisi"
+            binding.etName.requestFocus()
+            return
+        }
         if (email.isEmpty()) {
             binding.etEmail.error = "Email tidak boleh kosong"
             binding.etEmail.requestFocus()
@@ -73,15 +75,17 @@ class SignupFragment : Fragment() {
 
         auth.createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener(requireActivity()) { task ->
-                binding.progressBar.visibility = View.GONE
+                // Jangan sembunyikan loading dulu, tunggu save database selesai
 
                 if (task.isSuccessful) {
-                    // Pendaftaran berhasil, panggil fungsi untuk menyimpan info user ke Realtime Database
-                    saveUserToDatabase(task.result.user)
-
-                    Toast.makeText(context, "Pendaftaran Berhasil!", Toast.LENGTH_SHORT).show()
-                    goToMainActivity()
+                    // Pendaftaran Auth berhasil, sekarang simpan data detail ke Database
+                    val user = task.result.user
+                    if (user != null) {
+                        // Kirim nama yang diinput user ke fungsi save
+                        saveUserToDatabase(user, nameInput)
+                    }
                 } else {
+                    binding.progressBar.visibility = View.GONE
                     Toast.makeText(
                         context,
                         "Pendaftaran Gagal: ${task.exception?.message}",
@@ -92,25 +96,27 @@ class SignupFragment : Fragment() {
     }
 
     // FUNGSI UNTUK MENYIMPAN DATA PENGGUNA
-    private fun saveUserToDatabase(firebaseUser: FirebaseUser?) {
-        // Pastikan firebaseUser tidak null
-        val user = firebaseUser ?: return
-
-        // Ambil bagian nama dari email sebagai nama default
-        val nameFromEmail = user.email?.split('@')?.get(0)?.replaceFirstChar { it.titlecase() } ?: "User"
+    private fun saveUserToDatabase(firebaseUser: FirebaseUser, nameInput: String) {
 
         // Buat objek User yang akan disimpan
+        // Menggunakan Named Arguments agar aman & tidak tertukar urutannya
         val newUser = User(
-            uid = user.uid,
-            email = user.email,
-            name = nameFromEmail,
-            memberSince = System.currentTimeMillis()
+            uid = firebaseUser.uid,
+            email = firebaseUser.email,
+            name = nameInput, // Pakai nama inputan user
+            memberSince = System.currentTimeMillis() // INI KUNCINYA (Timestamp saat ini)
         )
 
         FirebaseDatabase.getInstance().getReference("users")
-            .child(user.uid)
+            .child(firebaseUser.uid)
             .setValue(newUser)
+            .addOnSuccessListener {
+                binding.progressBar.visibility = View.GONE
+                Toast.makeText(context, "Pendaftaran Berhasil!", Toast.LENGTH_SHORT).show()
+                goToMainActivity()
+            }
             .addOnFailureListener {
+                binding.progressBar.visibility = View.GONE
                 Toast.makeText(context, "Gagal menyimpan info profil.", Toast.LENGTH_SHORT).show()
             }
     }
