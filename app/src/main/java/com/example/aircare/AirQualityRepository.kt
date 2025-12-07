@@ -8,7 +8,8 @@ import kotlinx.coroutines.withContext
 
 class AirQualityRepository {
 
-    private val apiKey = "3edfd82f93e2e50f7497a083e88ece56"
+    // Kunci API sekarang diambil dari BuildConfig yang dikonfigurasi di build.gradle
+    private val apiKey = BuildConfig.WEATHER_API_KEY
 
     // Daftar lokasi yang ingin kita pantau (Hanya Lat & Lon, AQI akan diambil dari API)
     private val monitoringLocations = listOf(
@@ -46,7 +47,6 @@ class AirQualityRepository {
     )
 
     suspend fun getRealAirQualityData(): List<AirQualityDataPoint> = withContext(Dispatchers.IO) {
-        // Kita mulai request untuk SEMUA lokasi secara bersamaan
         val deferredResults = monitoringLocations.map { location ->
             async {
                 try {
@@ -77,8 +77,15 @@ class AirQualityRepository {
                 }
             }
         }
-
-        // Tunggu semua request selesai dan filter yang null (gagal)
         return@withContext deferredResults.awaitAll().filterNotNull()
+    }
+
+    suspend fun geocode(locationName: String): List<GeocodingResponse> = withContext(Dispatchers.IO) {
+        try {
+            ApiClient.instance.geocode(locationName, 5, apiKey)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList() // Return empty list on failure
+        }
     }
 }

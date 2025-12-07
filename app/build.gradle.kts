@@ -11,7 +11,12 @@ android {
     namespace = "com.example.aircare"
     compileSdk = 36
 
-    // Load local.properties
+    // Load properties
+    val properties = Properties()
+    val propertiesFile = rootProject.file("gradle.properties")
+    if (propertiesFile.exists()) {
+        properties.load(FileInputStream(propertiesFile))
+    }
     val localProperties = Properties()
     val localPropertiesFile = rootProject.file("local.properties")
     if (localPropertiesFile.exists()) {
@@ -30,6 +35,9 @@ android {
         // Ambil API key dari local.properties
         manifestPlaceholders["MAPS_API_KEY"] =
             localProperties.getProperty("MAPS_API_KEY", "")
+
+        // Ambil API key dari gradle.properties
+        buildConfigField("String", "WEATHER_API_KEY", properties.getProperty("WEATHER_API_KEY", ""))
     }
 
     buildTypes {
@@ -53,6 +61,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 

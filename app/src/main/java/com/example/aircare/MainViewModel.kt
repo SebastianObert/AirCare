@@ -12,10 +12,18 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
+// Data class to hold processed daily forecast information for the UI
+data class DailyForecast(
+    val day: String,
+    val iconUrl: String,
+    val tempMax: String,
+    val tempMin: String
+)
+
 class MainViewModel : ViewModel() {
 
-    // Kunci API
-    private val apiKey = "3edfd82f93e2e50f7497a083e88ece56"
+    // Kunci API sekarang diambil dari BuildConfig yang terpusat
+    private val apiKey = BuildConfig.WEATHER_API_KEY
 
     var isInitialLocationFetched = false
 
@@ -75,6 +83,10 @@ class MainViewModel : ViewModel() {
 
     private val _weatherDescription = MutableLiveData("Memuat cuaca...")
     val weatherDescription: LiveData<String> = _weatherDescription
+    
+    // --- LiveData untuk 5-Day Forecast ---
+    private val _forecastData = MutableLiveData<List<DailyForecast>>()
+    val forecastData: LiveData<List<DailyForecast>> = _forecastData
 
     // LiveData untuk memberi feedback saat menyimpan (menggunakan kelas Event)
     private val _saveStatus = MutableLiveData<Event<String>>()
@@ -98,6 +110,9 @@ class MainViewModel : ViewModel() {
         isInitialLocationFetched = true
         _location.value = locationName
         _aqiStatus.value = "Mengambil data..."
+        
+        // Reset forecast data while loading new data
+        _forecastData.value = emptyList()
 
         lastFetchedLocation = String.format("Lat: %.2f, Lon: %.2f", latitude, longitude)
 
@@ -117,6 +132,10 @@ class MainViewModel : ViewModel() {
                 // PANGGILAN API KEDUA: CUACA SAAT INI
                 val weatherResponse = ApiClient.instance.getCurrentWeather(latitude, longitude, apiKey = apiKey)
                 processWeatherResponse(weatherResponse)
+                
+                // PANGGILAN API KETIGA: 5-DAY/3-HOUR FORECAST
+                val forecastResponse = ApiClient.instance.getForecast(latitude, longitude, apiKey = apiKey)
+                processForecastResponse(forecastResponse)
 
             } catch (e: Exception) {
                 Log.e("AirCareAPI", "Gagal memanggil API: ${e.message}", e)
@@ -167,6 +186,39 @@ class MainViewModel : ViewModel() {
         lastFetchedWeatherTemp = formattedTemp // Store for saving
     }
 
+    private fun processForecastResponse(response: ForecastResponse) {
+        // 1. Group all forecast items by their date (e.g., "2023-10-27")
+        val groupedByDay = response.list.groupBy { it.dt_txt.substringBefore(" ") }
+
+        // 2. Process each day's data into a simplified DailyForecast object
+        val dailyForecasts = groupedByDay.map { (dateStr, items) ->
+            // Find the minimum and maximum temperature for the day
+            val minTemp = items.minOf { it.main.temp }
+            val maxTemp = items.maxOf { it.main.temp }
+
+            // Get the day name (e.g., "Jumat") from the date string
+            val dayFormat = SimpleDateFormat("EEEE", Locale("id", "ID"))
+            val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(dateStr)
+            val dayName = if (date != null) dayFormat.format(date) else "N/A"
+
+            // A simple way to choose a representative icon: use the one from midday (12:00 or 15:00)
+            // or fall back to the first item for that day.
+            val representativeItem = items.find { it.dt_txt.contains("12:00:00") } ?: items.first()
+            val icon = representativeItem.weather.firstOrNull()?.icon ?: ""
+            val iconUrl = if (icon.isNotEmpty()) "https://openweathermap.org/img/wn/$icon@2x.png" else ""
+
+            DailyForecast(
+                day = dayName,
+                iconUrl = iconUrl,
+                tempMax = String.format(Locale.getDefault(), "%.0f°", maxTemp),
+                tempMin = String.format(Locale.getDefault(), "%.0f°", minTemp)
+            )
+        }.take(5) // Ensure we only display 5 days of forecast
+
+        // 3. Update the LiveData to notify the UI
+        _forecastData.value = dailyForecasts
+    }
+
 
     private fun showError(message: String) {
         _isDataReadyToSave.value = false
@@ -184,6 +236,8 @@ class MainViewModel : ViewModel() {
         _temperature.value = "--°C"
         _weatherDescription.value = "Gagal memuat"
         _weatherIconUrl.value = ""
+        // Reset forecast
+        _forecastData.value = emptyList()
         lastFetchedWeatherTemp = null
         lastFetchedWeatherCondition = null
     }

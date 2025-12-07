@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.example.aircare.databinding.FragmentHomeBinding
 import com.github.mikephil.charting.data.Entry
@@ -31,6 +32,7 @@ class HomeFragment : Fragment() {
 
     private val mainViewModel: MainViewModel by viewModels()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var forecastAdapter: ForecastAdapter
 
     private val requestPermissionLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
@@ -54,12 +56,11 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
-
+        
+        setupRecyclerView()
         setupStaticViews()
         setupObservers()
         setupActions()
-        val forecastData = setupForecast()
-        setupChart(forecastData)
 
         // Handle the result from SearchLocationFragment
         findNavController().currentBackStackEntry?.savedStateHandle?.getLiveData<Bundle>("location_data")
@@ -85,6 +86,13 @@ class HomeFragment : Fragment() {
         }
     }
 
+    private fun setupRecyclerView() {
+        forecastAdapter = ForecastAdapter(emptyList())
+        binding.rvForecast.apply {
+            adapter = forecastAdapter
+            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
+        }
+    }
 
     private fun setupStaticViews() {
         binding.pollutantPm25.tvPollutantName.text = "PM2.5"
@@ -162,6 +170,14 @@ class HomeFragment : Fragment() {
                 Glide.with(this).load(url).into(binding.ivWeatherIcon)
             }
         }
+        
+        // --- Observer untuk data forecast ---
+        mainViewModel.forecastData.observe(viewLifecycleOwner) { forecastList ->
+            if (forecastList.isNotEmpty()) {
+                forecastAdapter.updateData(forecastList)
+                setupChart(forecastList)
+            }
+        }
 
         // --- Observer untuk feedback simpan data ---
         mainViewModel.saveStatus.observe(viewLifecycleOwner) { event ->
@@ -188,23 +204,7 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun setupForecast(): List<Forecast> {
-        val forecastData = listOf(
-            Forecast("Senin", R.drawable.ic_weather_cloudy, "30°", "24°"),
-            Forecast("Selasa", R.drawable.ic_weather_rainy, "28°", "23°"),
-            Forecast("Rabu", R.drawable.ic_weather_storm, "27°", "22°"),
-            Forecast("Kamis", R.drawable.ic_weather_cloudy, "32°", "26°"),
-            Forecast("Jumat", R.drawable.ic_recommend_good, "30°", "24°"),
-            Forecast("Sabtu", R.drawable.ic_weather_rainy, "29°", "24°"),
-            Forecast("Minggu", R.drawable.ic_recommend_good, "31°", "25°")
-        )
-
-        val forecastAdapter = ForecastAdapter(forecastData)
-        binding.rvForecast.adapter = forecastAdapter
-        return forecastData
-    }
-
-    private fun setupChart(forecastData: List<Forecast>) {
+    private fun setupChart(forecastData: List<DailyForecast>) {
         val entriesMax = forecastData.mapIndexed { index, forecast ->
             Entry(index.toFloat(), forecast.tempMax.removeSuffix("°").toFloat())
         }

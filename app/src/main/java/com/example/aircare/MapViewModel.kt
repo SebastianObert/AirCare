@@ -11,6 +11,9 @@ class MapViewModel(private val repository: AirQualityRepository) : ViewModel() {
 
     // LiveData untuk menyimpan titik data kualitas udara
     val airQualityDataPoints = MutableLiveData<List<WeightedLatLng>>()
+    // LiveData untuk hasil geocoding
+    val geocodingResults = MutableLiveData<List<GeocodingResponse>>()
+
 
     fun fetchAirQualityDataForMap() {
         viewModelScope.launch {
@@ -28,6 +31,13 @@ class MapViewModel(private val repository: AirQualityRepository) : ViewModel() {
                 }
                 airQualityDataPoints.postValue(weightedData)
             }
+        }
+    }
+
+    fun searchLocation(locationName: String) {
+        viewModelScope.launch {
+            val results = repository.geocode(locationName)
+            geocodingResults.postValue(results)
         }
     }
 }

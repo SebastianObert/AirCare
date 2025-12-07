@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.SearchView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -34,15 +35,12 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    // Launcher untuk meminta izin lokasi
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // Jika izin diberikan, dapatkan lokasi dan aktifkan layer lokasi
             getMyLocation()
         } else {
-            // Jika izin ditolak, beri tahu pengguna
             Toast.makeText(context, "Izin lokasi ditolak. Fitur lokasi saya tidak akan berfungsi.", Toast.LENGTH_LONG).show()
         }
     }
@@ -64,8 +62,8 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         binding.mapView.getMapAsync(this)
 
         setupObservers()
+        setupSearchView()
 
-        // Set listener untuk tombol FAB
         binding.fabMyLocation.setOnClickListener {
             checkLocationPermissionAndGetLocation()
         }
@@ -73,14 +71,27 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     override fun onMapReady(map: GoogleMap) {
         this.googleMap = map
-        googleMap?.uiSettings?.isMyLocationButtonEnabled = false // Sembunyikan tombol default
+        googleMap?.uiSettings?.isMyLocationButtonEnabled = false
 
-        // Pindahkan kamera ke Jakarta dengan zoom level 10 sebagai posisi awal
         val jakarta = LatLng(-6.2088, 106.8456)
         googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(jakarta, 10f))
 
-        // Minta ViewModel untuk mengambil data heatmap saat peta siap
         mapViewModel.fetchAirQualityDataForMap()
+    }
+
+    private fun setupSearchView() {
+        binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                if (!query.isNullOrBlank()) {
+                    mapViewModel.searchLocation(query)
+                }
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                return false
+            }
+        })
     }
 
     private fun checkLocationPermissionAndGetLocation() {
@@ -89,11 +100,9 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED -> {
-                // Izin sudah ada, langsung dapatkan lokasi
                 getMyLocation()
             }
             else -> {
-                // Minta izin ke pengguna
                 requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
             }
         }
@@ -101,15 +110,14 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
     private fun getMyLocation() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return // Double check, seharusnya tidak pernah terjadi
+            return
         }
 
-        googleMap?.isMyLocationEnabled = true // Tampilkan titik biru lokasi pengguna
+        googleMap?.isMyLocationEnabled = true
 
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             if (location != null) {
                 val userLatLng = LatLng(location.latitude, location.longitude)
-                // Animasikan kamera ke lokasi pengguna
                 googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 12f))
             } else {
                 Toast.makeText(context, "Gagal mendapatkan lokasi. Pastikan GPS Anda aktif.", Toast.LENGTH_SHORT).show()
@@ -118,10 +126,19 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun setupObservers() {
-        // Amati LiveData yang berisi data kualitas udara untuk heatmap
         mapViewModel.airQualityDataPoints.observe(viewLifecycleOwner) { dataPoints ->
             if (googleMap != null && dataPoints.isNotEmpty()) {
                 addHeatmap(dataPoints)
+            }
+        }
+
+        mapViewModel.geocodingResults.observe(viewLifecycleOwner) { results ->
+            if (results.isNotEmpty()) {
+                val firstResult = results[0]
+                val newLocation = LatLng(firstResult.lat, firstResult.lon)
+                googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(newLocation, 12f))
+            } else {
+                Toast.makeText(context, "Lokasi tidak ditemukan", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -129,13 +146,11 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private fun addHeatmap(dataPoints: List<WeightedLatLng>) {
         val provider = HeatmapTileProvider.Builder()
             .weightedData(dataPoints)
-            .radius(40) // Radius bisa dikecilkan sedikit jika titiknya rapat
-            .opacity(0.7) // Transparansi
+            .radius(40)
+            .opacity(0.7)
             .build()
 
-        // Bersihkan overlay lama jika ada (opsional, jika Anda refresh map)
         googleMap?.clear()
-
         googleMap?.addTileOverlay(TileOverlayOptions().tileProvider(provider))
     }
 
