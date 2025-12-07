@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.gms.google.services)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -62,6 +63,7 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = true
+        compose = true
     }
 }
 
@@ -109,6 +111,29 @@ dependencies {
     // Maps
     implementation("com.google.android.gms:play-services-maps:18.2.0")
     implementation("com.google.maps.android:android-maps-utils:2.3.0")
+
+    // DEPENDENCY COMPOSE
+    val composeBom = platform("androidx.compose:compose-bom:2024.04.01")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+
+    // Integrasi dengan Activity & ViewModel
+    implementation("androidx.activity:activity-compose:1.9.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
+
+    // LiveData di Compose
+    implementation("androidx.compose.runtime:runtime-livedata")
+
+    // Pengganti Glide untuk Compose
+    implementation("io.coil-kt:coil-compose:2.6.0")
+
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

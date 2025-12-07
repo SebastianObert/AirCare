@@ -17,12 +17,15 @@ data class DailyForecast(
     val day: String,
     val iconUrl: String,
     val tempMax: String,
-    val tempMin: String
+    val tempMin: String,
+    val description: String,
+    val humidity: String,
+    val windSpeed: String,
+    val precipitation: String
 )
 
 class MainViewModel : ViewModel() {
 
-    // Kunci API sekarang diambil dari BuildConfig yang terpusat
     private val apiKey = BuildConfig.WEATHER_API_KEY
 
     var isInitialLocationFetched = false
@@ -188,7 +191,7 @@ class MainViewModel : ViewModel() {
 
     private fun processForecastResponse(response: ForecastResponse) {
         // 1. Group all forecast items by their date (e.g., "2023-10-27")
-        val groupedByDay = response.list.groupBy { it.dt_txt.substringBefore(" ") }
+        val groupedByDay = response.list.groupBy { it.dtTxt.substringBefore(" ") }
 
         // 2. Process each day's data into a simplified DailyForecast object
         val dailyForecasts = groupedByDay.map { (dateStr, items) ->
@@ -201,17 +204,27 @@ class MainViewModel : ViewModel() {
             val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(dateStr)
             val dayName = if (date != null) dayFormat.format(date) else "N/A"
 
-            // A simple way to choose a representative icon: use the one from midday (12:00 or 15:00)
+            // A simple way to choose a representative item: use the one from midday (12:00 or 15:00)
             // or fall back to the first item for that day.
-            val representativeItem = items.find { it.dt_txt.contains("12:00:00") } ?: items.first()
+            val representativeItem = items.find { it.dtTxt.contains("12:00:00") } ?: items.first()
             val icon = representativeItem.weather.firstOrNull()?.icon ?: ""
             val iconUrl = if (icon.isNotEmpty()) "https://openweathermap.org/img/wn/$icon@2x.png" else ""
+            
+            // Get additional data from the representative item
+            val description = representativeItem.weather.firstOrNull()?.description?.replaceFirstChar { it.titlecase(Locale.getDefault()) } ?: "N/A"
+            val humidity = representativeItem.main.humidity?.toString() ?: "N/A"
+            val windSpeed = representativeItem.wind.speed.toString()
+            val precipitation = (representativeItem.pop * 100).toInt().toString()
 
             DailyForecast(
                 day = dayName,
                 iconUrl = iconUrl,
                 tempMax = String.format(Locale.getDefault(), "%.0f°", maxTemp),
-                tempMin = String.format(Locale.getDefault(), "%.0f°", minTemp)
+                tempMin = String.format(Locale.getDefault(), "%.0f°", minTemp),
+                description = description,
+                humidity = "$humidity%",
+                windSpeed = "$windSpeed m/s",
+                precipitation = "$precipitation%"
             )
         }.take(5) // Ensure we only display 5 days of forecast
 

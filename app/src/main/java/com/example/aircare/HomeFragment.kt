@@ -2,45 +2,37 @@ package com.example.aircare
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.location.Geocoder
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.app.ActivityCompat
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.LinearLayoutManager
-import com.bumptech.glide.Glide
-import com.example.aircare.databinding.FragmentHomeBinding
-import com.github.mikephil.charting.data.Entry
-import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.data.LineDataSet
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import java.util.*
 
 class HomeFragment : Fragment() {
 
-    private var _binding: FragmentHomeBinding? = null
-    private val binding get() = _binding!!
-
     private val mainViewModel: MainViewModel by viewModels()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var forecastAdapter: ForecastAdapter
 
     private val requestPermissionLauncher = registerForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+        ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
             getLastLocation()
         } else {
-            binding.tvLocation.text = "Izin lokasi ditolak"
+            // Kita bisa handle error state di ViewModel jika mau ditampilkan di UI Compose
+            Toast.makeText(context, "Izin lokasi ditolak", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -48,21 +40,37 @@ class HomeFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = FragmentHomeBinding.inflate(inflater, container, false)
-        return binding.root
+        // Return ComposeView
+        return ComposeView(requireContext()).apply {
+            // Strategi agar Compose view didestroy saat Fragment view didestroy
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+
+            setContent {
+                // Panggil Composable Screen kita
+                // Pastikan tema Material diset (biasanya di MainActivity, tapi aman dipanggil di sini juga)
+                MaterialTheme {
+                    HomeScreen(
+                        viewModel = mainViewModel,
+                        onChangeLocationClick = {
+                            findNavController().navigate(R.id.action_homeFragment_to_searchLocationFragment)
+                        },
+                        onSaveClick = {
+                            mainViewModel.onSaveButtonClicked()
+                        }
+                    )
+                }
+            }
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
-        
-        setupRecyclerView()
-        setupStaticViews()
-        setupObservers()
-        setupActions()
 
-        // Handle the result from SearchLocationFragment
+        setupObservers() // Untuk Toast/Feedback non-UI
+
+        // Handle result dari SearchLocationFragment (Logika sama persis)
         findNavController().currentBackStackEntry?.savedStateHandle?.getLiveData<Bundle>("location_data")
             ?.observe(viewLifecycleOwner) { result ->
                 if (result.getBoolean("useCurrentLocation")) {
@@ -76,166 +84,26 @@ class HomeFragment : Fragment() {
                         mainViewModel.updateLocationAndFetchData(latitude, longitude, locationName)
                     }
                 }
-                // Clear the result to prevent it from being triggered again
                 findNavController().currentBackStackEntry?.savedStateHandle?.remove<Bundle>("location_data")
             }
 
-        // Only get current location if it has not been fetched before.
         if (!mainViewModel.isInitialLocationFetched) {
             checkLocationPermission()
         }
     }
 
-    private fun setupRecyclerView() {
-        forecastAdapter = ForecastAdapter(emptyList())
-        binding.rvForecast.apply {
-            adapter = forecastAdapter
-            layoutManager = LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false)
-        }
-    }
-
-    private fun setupStaticViews() {
-        binding.pollutantPm25.tvPollutantName.text = "PM2.5"
-        binding.pollutantCo.tvPollutantName.text = "CO"
-        binding.pollutantO3.tvPollutantName.text = "Ozon (O₃)"
-        binding.pollutantNo2.tvPollutantName.text = "NO₂"
-        binding.pollutantSo2.tvPollutantName.text = "SO₂"
-
-        binding.guideGood.apply {
-            viewGuideColor.setBackgroundResource(R.drawable.status_bg_green)
-            tvGuideLevel.text = "Baik"
-            tvGuideRange.text = "0-50"
-        }
-        binding.guideModerate.apply {
-            viewGuideColor.setBackgroundResource(R.drawable.status_bg_yellow)
-            tvGuideLevel.text = "Cukup"
-            tvGuideRange.text = "51-100"
-        }
-        binding.guideUnhealthySensitive.apply {
-            viewGuideColor.setBackgroundResource(R.drawable.status_bg_orange)
-            tvGuideLevel.text = "Sedang"
-            tvGuideRange.text = "101-150"
-        }
-        binding.guideUnhealthy.apply {
-            viewGuideColor.setBackgroundResource(R.drawable.status_bg_red)
-            tvGuideLevel.text = "Buruk"
-            tvGuideRange.text = "151-200"
-        }
-        binding.guideVeryUnhealthy.apply {
-            viewGuideColor.setBackgroundResource(R.drawable.status_bg_maroon)
-            tvGuideLevel.text = "Sangat Buruk"
-            tvGuideRange.text = "201+"
-        }
-    }
-
     private fun setupObservers() {
-        // --- Observer untuk data utama
-        mainViewModel.location.observe(viewLifecycleOwner) { binding.tvLocation.text = it }
-        mainViewModel.lastUpdated.observe(viewLifecycleOwner) { binding.tvLastUpdated.text = it }
-        mainViewModel.aqiValue.observe(viewLifecycleOwner) { binding.tvAqiValue.text = it }
-        mainViewModel.aqiStatus.observe(viewLifecycleOwner) { binding.tvAqiStatus.text = it }
+        // Kita hanya perlu observe hal-hal yang bersifat "One-shot event" seperti Toast
+        // Data UI sudah di-observe langsung di dalam Composable (HomeScreen.kt)
 
-        // --- Observer untuk UI dinamis ---
-        mainViewModel.aqiStatusBackground.observe(viewLifecycleOwner) { drawableId ->
-            if (drawableId != null && drawableId != 0) {
-                binding.tvAqiStatus.setBackgroundResource(drawableId)
-            }
-        }
-        mainViewModel.recommendationIcon.observe(viewLifecycleOwner) { iconId ->
-            if (iconId != null && iconId != 0) {
-                binding.ivRecommendationIcon.setImageResource(iconId)
-            }
-        }
-        mainViewModel.recommendationText.observe(viewLifecycleOwner) { text ->
-            binding.tvRecommendationText.text = text
-        }
-        mainViewModel.aqiIndicatorPosition.observe(viewLifecycleOwner) { position ->
-            val params = binding.guidelineIndicator.layoutParams as ConstraintLayout.LayoutParams
-            params.guidePercent = position
-            binding.guidelineIndicator.layoutParams = params
-        }
-
-        // --- Observer untuk detail polutan ---
-        mainViewModel.pm25Value.observe(viewLifecycleOwner) { binding.pollutantPm25.tvPollutantValue.text = it }
-        mainViewModel.coValue.observe(viewLifecycleOwner) { binding.pollutantCo.tvPollutantValue.text = it }
-        mainViewModel.o3Value.observe(viewLifecycleOwner) { binding.pollutantO3.tvPollutantValue.text = it }
-        mainViewModel.no2Value.observe(viewLifecycleOwner) { binding.pollutantNo2.tvPollutantValue.text = it }
-        mainViewModel.so2Value.observe(viewLifecycleOwner) { binding.pollutantSo2.tvPollutantValue.text = it }
-
-        // --- Observer untuk data cuaca ---
-        mainViewModel.temperature.observe(viewLifecycleOwner) { binding.tvTemperature.text = it }
-        mainViewModel.weatherDescription.observe(viewLifecycleOwner) { binding.tvWeatherDescription.text = it }
-        mainViewModel.weatherIconUrl.observe(viewLifecycleOwner) { url ->
-            if (!url.isNullOrEmpty()) {
-                Glide.with(this).load(url).into(binding.ivWeatherIcon)
-            }
-        }
-        
-        // --- Observer untuk data forecast ---
-        mainViewModel.forecastData.observe(viewLifecycleOwner) { forecastList ->
-            if (forecastList.isNotEmpty()) {
-                forecastAdapter.updateData(forecastList)
-                setupChart(forecastList)
-            }
-        }
-
-        // --- Observer untuk feedback simpan data ---
         mainViewModel.saveStatus.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandled()?.let { message ->
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
             }
         }
-
-        // Observer ini mengontrol status aktif/nonaktif dari tombol Simpan.
-        mainViewModel.isDataReadyToSave.observe(viewLifecycleOwner) { isReady ->
-            binding.btnSave.isEnabled = isReady
-
-            // Memberikan feedback visual. Tombol akan terlihat pudar saat tidak bisa diklik.
-            binding.btnSave.alpha = if (isReady) 1.0f else 0.5f
-        }
     }
 
-    private fun setupActions() {
-        binding.btnSave.setOnClickListener {
-            mainViewModel.onSaveButtonClicked()
-        }
-        binding.changeLocationContainer.setOnClickListener {
-            findNavController().navigate(R.id.action_homeFragment_to_searchLocationFragment)
-        }
-    }
-
-    private fun setupChart(forecastData: List<DailyForecast>) {
-        val entriesMax = forecastData.mapIndexed { index, forecast ->
-            Entry(index.toFloat(), forecast.tempMax.removeSuffix("°").toFloat())
-        }
-        val entriesMin = forecastData.mapIndexed { index, forecast ->
-            Entry(index.toFloat(), forecast.tempMin.removeSuffix("°").toFloat())
-        }
-
-        val lineDataSetMax = LineDataSet(entriesMax, "Suhu Maksimum").apply {
-            color = Color.RED
-            valueTextColor = Color.BLACK
-            setCircleColor(Color.RED)
-        }
-
-        val lineDataSetMin = LineDataSet(entriesMin, "Suhu Minimum").apply {
-            color = Color.BLUE
-            valueTextColor = Color.BLACK
-            setCircleColor(Color.BLUE)
-        }
-
-        val lineData = LineData(lineDataSetMax, lineDataSetMin)
-        binding.chartForecast.data = lineData
-
-        binding.chartForecast.description.isEnabled = false
-        binding.chartForecast.xAxis.valueFormatter = com.github.mikephil.charting.formatter.IndexAxisValueFormatter(forecastData.map { it.day })
-        binding.chartForecast.xAxis.position = com.github.mikephil.charting.components.XAxis.XAxisPosition.BOTTOM
-        binding.chartForecast.axisRight.isEnabled = false
-
-        binding.chartForecast.invalidate() // refresh
-    }
-
-    //  Periksa izin lokasi
+    // Logika Lokasi tetap sama (tidak ada perubahan)
     private fun checkLocationPermission() {
         when {
             ContextCompat.checkSelfPermission(
@@ -254,37 +122,29 @@ class HomeFragment : Fragment() {
         try {
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
                 if (location != null) {
-                    // 1. Dapatkan koordinat
                     val latitude = location.latitude
                     val longitude = location.longitude
-
-                    // 2. Ubah koordinat menjadi nama alamat
                     val addressText = getAddressFromLocation(latitude, longitude)
-
-                    // 3. Kirim SEMUA data (koordinat DAN nama alamat) ke ViewModel
                     mainViewModel.updateLocationAndFetchData(latitude, longitude, addressText)
                 } else {
-                    binding.tvLocation.text = "Gagal mendapatkan lokasi. Aktifkan GPS."
+                   // Handle null location
                 }
             }
         } catch (e: SecurityException) {
-            binding.tvLocation.text = "Error keamanan saat akses lokasi."
+             // Handle error
         }
     }
 
     private fun getAddressFromLocation(latitude: Double, longitude: Double): String {
         if (context == null) return "Lokasi tidak diketahui"
-
         return try {
             val geocoder = Geocoder(requireContext(), Locale.getDefault())
             val addresses = geocoder.getFromLocation(latitude, longitude, 1)
-
             if (!addresses.isNullOrEmpty()) {
                 val address = addresses[0]
                 val city = address.locality
                 val adminArea = address.subAdminArea
                 val country = address.countryName
-
                 when {
                     !city.isNullOrEmpty() -> "$city, $country"
                     !adminArea.isNullOrEmpty() -> "$adminArea, $country"
@@ -297,10 +157,5 @@ class HomeFragment : Fragment() {
             e.printStackTrace()
             "Gagal menerjemahkan lokasi"
         }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 }

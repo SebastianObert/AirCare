@@ -1,9 +1,10 @@
 package com.example.aircare
 
+import com.google.gson.annotations.SerializedName
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-// --- Data Classes for Air Pollution ---
+// Data Classes for Air Pollution
 data class AirQualityResponse(val list: List<AirData>)
 data class AirData(val main: MainAqi, val components: Components)
 data class MainAqi(val aqi: Int)
@@ -15,7 +16,7 @@ data class Components(
     val pm2_5: Double
 )
 
-// --- Data Classes for Current Weather ---
+// Data Classes for Current Weather
 data class WeatherResponse(
     val weather: List<WeatherInfo>,
     val main: MainWeather
@@ -25,10 +26,13 @@ data class WeatherInfo(
     val icon: String
 )
 data class MainWeather(
-    val temp: Double
+    val temp: Double,
+    val humidity: Int?,
+    @SerializedName("temp_min") val tempMin: Double?,
+    @SerializedName("temp_max") val tempMax: Double?
 )
 
-// --- Data Classes for Geocoding ---
+// Data Classes for Geocoding
 data class GeocodingResponse(
     val name: String,
     val lat: Double,
@@ -36,7 +40,7 @@ data class GeocodingResponse(
     val country: String
 )
 
-// --- Data Classes for 5-day/3-hour Forecast ---
+// Data Classes for 5-day/3-hour Forecast
 data class ForecastResponse(
     val list: List<ForecastItem>
 )
@@ -44,9 +48,15 @@ data class ForecastResponse(
 data class ForecastItem(
     val main: MainWeather,
     val weather: List<WeatherInfo>,
-    val dt_txt: String // Date and time of forecast
+    val wind: Wind,
+    val pop: Double, // Probability of precipitation
+    @SerializedName("dt_txt") val dtTxt: String // Date and time of forecast
 )
 
+data class Wind(
+    val speed: Double,
+    val deg: Int
+)
 
 interface ApiService {
     @GET("data/2.5/air_pollution")

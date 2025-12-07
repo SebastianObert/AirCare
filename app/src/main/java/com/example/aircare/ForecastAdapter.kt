@@ -29,6 +29,10 @@ class ForecastAdapter(private var forecastList: List<DailyForecast>) : RecyclerV
             binding.tvDay.text = forecast.day
             binding.tvTempMax.text = forecast.tempMax
             binding.tvTempMin.text = forecast.tempMin
+            binding.tvDesc.text = forecast.description
+            binding.tvHumidity.text = forecast.humidity
+            binding.tvWind.text = forecast.windSpeed
+            binding.tvPrecipitation.text = forecast.precipitation
             
             if (forecast.iconUrl.isNotEmpty()) {
                 Glide.with(binding.root.context)
