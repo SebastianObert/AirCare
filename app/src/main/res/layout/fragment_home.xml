@@ -330,6 +330,53 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- Forecast Section -->
+            <TextView
+                android:id="@+id/tv_forecast_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="32dp"
+                android:text="Ramalan Cuaca"
+                android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
+                android:textStyle="bold"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/card_pollutants" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_forecast"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="4dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_forecast_title">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rv_forecast"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:itemCount="5"
+                        tools:listitem="@layout/item_forecast_day" />
+
+                    <com.github.mikephil.charting.charts.LineChart
+                        android:id="@+id/chart_forecast"
+                        android:layout_width="match_parent"
+                        android:layout_height="200dp"
+                        android:layout_marginTop="16dp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- AQI Guide Section -->
             <TextView
                 android:id="@+id/tv_guide_title"
@@ -340,7 +387,7 @@
                 android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
                 android:textStyle="bold"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/card_pollutants" />
+                app:layout_constraintTop_toBottomOf="@id/card_forecast" />
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_guide"
@@ -364,61 +411,21 @@
                     <include android:id="@+id/guide_unhealthy_sensitive" layout="@layout/item_guide" />
                     <include android:id="@+id/guide_unhealthy" layout="@layout/item_guide" />
                     <include android:id="@+id/guide_very_unhealthy" layout="@layout/item_guide" />
-
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 7-Day Forecast Section -->
-            <TextView
-                android:id="@+id/tv_forecast_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="32dp"
-                android:text="Perkiraan 7 Hari"
-                android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
-                android:textStyle="bold"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/card_guide" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rv_forecast"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:orientation="horizontal"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/tv_forecast_title"
-                tools:listitem="@layout/item_forecast_day" />
-
-            <!-- Forecast Chart Section -->
-            <com.github.mikephil.charting.charts.LineChart
-                android:id="@+id/chart_forecast"
-                android:layout_width="0dp"
-                android:layout_height="200dp"
-                android:layout_marginTop="16dp"
-                app:layout_constraintTop_toBottomOf="@id/rv_forecast"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
-
-            <!-- Save Button -->
-            <com.google.android.material.button.MaterialButton
+            <Button
                 android:id="@+id/btn_save"
                 android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_marginTop="32dp"
-                android:text="Simpan Data Riwayat"
-                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
-                app:cornerRadius="16dp"
-                app:icon="@android:drawable/ic_menu_save"
-                app:iconGravity="textStart"
-                app:layout_constraintEnd_toEndOf="parent"
+                android:layout_height="wrap_content"
+                android:text="Simpan ke Riwayat"
+                android:layout_marginTop="24dp"
+                app:layout_constraintTop_toBottomOf="@id/card_guide"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/chart_forecast" />
+                app:layout_constraintEnd_toEndOf="parent"
+                android:enabled="false"
+                />
 
         </androidx.constraintlayout.widget.ConstraintLayout>
-
     </ScrollView>
-
 </androidx.constraintlayout.widget.ConstraintLayout>

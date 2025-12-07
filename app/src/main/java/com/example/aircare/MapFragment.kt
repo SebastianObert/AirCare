@@ -19,9 +19,12 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.TileOverlay
 import com.google.android.gms.maps.model.TileOverlayOptions
+import com.google.android.gms.maps.model.UrlTileProvider
 import com.google.maps.android.heatmaps.HeatmapTileProvider
 import com.google.maps.android.heatmaps.WeightedLatLng
+import java.net.URL
 
 class MapFragment : Fragment(), OnMapReadyCallback {
 
@@ -29,6 +32,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     private val binding get() = _binding!!
 
     private var googleMap: GoogleMap? = null
+    private var weatherTileOverlay: TileOverlay? = null
     private val mapViewModel: MapViewModel by viewModels {
         MapViewModelFactory(AirQualityRepository())
     }
@@ -63,6 +67,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
 
         setupObservers()
         setupSearchView()
+        setupLayerChips()
 
         binding.fabMyLocation.setOnClickListener {
             checkLocationPermissionAndGetLocation()
@@ -76,6 +81,7 @@ class MapFragment : Fragment(), OnMapReadyCallback {
         val jakarta = LatLng(-6.2088, 106.8456)
         googleMap?.moveCamera(CameraUpdateFactory.newLatLngZoom(jakarta, 10f))
 
+        // Default to AQI heatmap
         mapViewModel.fetchAirQualityDataForMap()
     }
 
@@ -92,6 +98,48 @@ class MapFragment : Fragment(), OnMapReadyCallback {
                 return false
             }
         })
+    }
+    
+    private fun setupLayerChips() {
+        binding.layerChipGroup.setOnCheckedChangeListener { group, checkedId ->
+            // Clear previous overlays before adding a new one
+            weatherTileOverlay?.remove()
+            googleMap?.clear() // Also clear heatmap
+            binding.legendCard.visibility = View.GONE // Hide legend by default
+
+            when (checkedId) {
+                R.id.chip_no_layer -> {
+                    // Do nothing, overlays are already cleared
+                }
+                R.id.chip_aqi -> {
+                    mapViewModel.fetchAirQualityDataForMap() // Re-fetch and show heatmap
+                    binding.legendCard.visibility = View.VISIBLE // Show AQI legend
+                }
+                R.id.chip_temp -> updateWeatherLayer("temp_new")
+                R.id.chip_wind -> updateWeatherLayer("wind_new")
+                R.id.chip_rain -> updateWeatherLayer("precipitation_new")
+                R.id.chip_clouds -> updateWeatherLayer("clouds_new")
+                R.id.chip_pressure -> updateWeatherLayer("pressure_new")
+            }
+        }
+    }
+    
+    private fun updateWeatherLayer(layerType: String) {
+        val apiKey = BuildConfig.WEATHER_API_KEY
+        val tileProvider = object : UrlTileProvider(256, 256) {
+            override fun getTileUrl(x: Int, y: Int, zoom: Int): URL? {
+                val urlStr = "https://tile.openweathermap.org/map/$layerType/$zoom/$x/$y.png?appid=$apiKey"
+                return try {
+                    URL(urlStr)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        }
+
+        weatherTileOverlay = googleMap?.addTileOverlay(
+            TileOverlayOptions().tileProvider(tileProvider)
+        )
     }
 
     private fun checkLocationPermissionAndGetLocation() {
@@ -144,14 +192,16 @@ class MapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun addHeatmap(dataPoints: List<WeightedLatLng>) {
-        val provider = HeatmapTileProvider.Builder()
-            .weightedData(dataPoints)
-            .radius(40)
-            .opacity(0.7)
-            .build()
+        // Only add heatmap if the AQI chip is selected
+        if (binding.chipAqi.isChecked) {
+            val provider = HeatmapTileProvider.Builder()
+                .weightedData(dataPoints)
+                .radius(40)
+                .opacity(0.7)
+                .build()
 
-        googleMap?.clear()
-        googleMap?.addTileOverlay(TileOverlayOptions().tileProvider(provider))
+            googleMap?.addTileOverlay(TileOverlayOptions().tileProvider(provider))
+        }
     }
 
     override fun onResume() {
