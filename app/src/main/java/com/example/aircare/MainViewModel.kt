@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Data class to hold processed daily forecast information for the UI
+// Data class for Daily Forecast UI
 data class DailyForecast(
     val day: String,
     val iconUrl: String,
@@ -27,21 +27,23 @@ data class DailyForecast(
 class MainViewModel : ViewModel() {
 
     private val apiKey = BuildConfig.WEATHER_API_KEY
-
     var isInitialLocationFetched = false
 
+    // --- MEMORY VARIABLES FOR SAVING (CRITICAL) ---
+    // We store the raw coordinates separately to ensure accurate saving format
+    private var currentLatitude: Double = 0.0
+    private var currentLongitude: Double = 0.0
+
     private fun getDatabaseReference(): DatabaseReference? {
-        // Dapatkan ID unik pengguna dari Firebase Auth
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         return if (userId != null) {
-            // Buat 'tabel' history, lalu buat sub-tabel berdasarkan userId
             FirebaseDatabase.getInstance().getReference("history").child(userId)
         } else {
             null
         }
     }
 
-    // LiveData untuk Status UI (kualitas udara)
+    // LiveData for UI
     private val _location = MutableLiveData("Mencari lokasi...")
     val location: LiveData<String> = _location
 
@@ -77,7 +79,6 @@ class MainViewModel : ViewModel() {
     private val _so2Value = MutableLiveData("-- µg/m³")
     val so2Value: LiveData<String> = _so2Value
 
-    // LiveData untuk Status UI (Cuaca)
     private val _weatherIconUrl = MutableLiveData<String>()
     val weatherIconUrl: LiveData<String> = _weatherIconUrl
 
@@ -86,21 +87,17 @@ class MainViewModel : ViewModel() {
 
     private val _weatherDescription = MutableLiveData("Memuat cuaca...")
     val weatherDescription: LiveData<String> = _weatherDescription
-    
-    // --- LiveData untuk 5-Day Forecast ---
+
     private val _forecastData = MutableLiveData<List<DailyForecast>>()
     val forecastData: LiveData<List<DailyForecast>> = _forecastData
 
-    // LiveData untuk memberi feedback saat menyimpan (menggunakan kelas Event)
     private val _saveStatus = MutableLiveData<Event<String>>()
     val saveStatus: LiveData<Event<String>> = _saveStatus
 
-    // === MENGONTROL TOMBOL SIMPAN ===
     private val _isDataReadyToSave = MutableLiveData(false)
     val isDataReadyToSave: LiveData<Boolean> = _isDataReadyToSave
 
-    // Variabel Internal untuk Menyimpan Data Terakhir
-    private var lastFetchedLocation: String? = null
+    // Internal variables for last fetched data
     private var lastFetchedAqiValue: String? = null
     private var lastFetchedAqiStatus: String? = null
     private var lastFetchedStatusColor: Int? = null
@@ -108,23 +105,24 @@ class MainViewModel : ViewModel() {
     private var lastFetchedWeatherCondition: String? = null
 
 
-    // Logika Utama
+    // --- MAIN LOGIC ---
     fun updateLocationAndFetchData(latitude: Double, longitude: Double, locationName: String) {
+        // 1. STORE COORDINATES IN MEMORY
+        this.currentLatitude = latitude
+        this.currentLongitude = longitude
+
         isInitialLocationFetched = true
         _location.value = locationName
         _aqiStatus.value = "Mengambil data..."
-        
-        // Reset forecast data while loading new data
-        _forecastData.value = emptyList()
 
-        lastFetchedLocation = String.format("Lat: %.2f, Lon: %.2f", latitude, longitude)
+        _forecastData.value = emptyList()
 
         _isDataReadyToSave.value = false
         lastFetchedAqiValue = null
 
         viewModelScope.launch {
             try {
-                // PANGGILAN API PERTAMA: KUALITAS UDARA
+                // API CALL 1: AIR QUALITY
                 val airQualityResponse = ApiClient.instance.getAirPollution(latitude, longitude, apiKey)
                 if (airQualityResponse.list.isNotEmpty()) {
                     processApiResponse(airQualityResponse.list[0])
@@ -132,11 +130,11 @@ class MainViewModel : ViewModel() {
                     showError("Data AQI tidak tersedia")
                 }
 
-                // PANGGILAN API KEDUA: CUACA SAAT INI
+                // API CALL 2: CURRENT WEATHER
                 val weatherResponse = ApiClient.instance.getCurrentWeather(latitude, longitude, apiKey = apiKey)
                 processWeatherResponse(weatherResponse)
-                
-                // PANGGILAN API KETIGA: 5-DAY/3-HOUR FORECAST
+
+                // API CALL 3: FORECAST
                 val forecastResponse = ApiClient.instance.getForecast(latitude, longitude, apiKey = apiKey)
                 processForecastResponse(forecastResponse)
 
@@ -149,16 +147,13 @@ class MainViewModel : ViewModel() {
 
     private fun processApiResponse(airData: AirData) {
         val aqi = airData.main.aqi
-
         val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
         _lastUpdated.value = "Diperbarui: ${sdf.format(Date())}"
 
-        // Simpan data terakhir untuk digunakan oleh fungsi simpan
         lastFetchedAqiValue = convertAqiValueToString(aqi)
         lastFetchedAqiStatus = convertAqiToStatus(aqi)
         lastFetchedStatusColor = convertAqiToDrawable(aqi)
 
-        // Update LiveData untuk UI
         _aqiValue.value = lastFetchedAqiValue
         _aqiStatus.value = lastFetchedAqiStatus
         _aqiStatusBackground.value = lastFetchedStatusColor ?: R.drawable.status_bg_yellow
@@ -182,35 +177,24 @@ class MainViewModel : ViewModel() {
             val processedDescription = weatherInfo.description.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
             _weatherDescription.value = processedDescription
             _weatherIconUrl.value = "https://openweathermap.org/img/wn/${weatherInfo.icon}@2x.png"
-            lastFetchedWeatherCondition = processedDescription // Store for saving
+            lastFetchedWeatherCondition = processedDescription
         }
         val formattedTemp = String.format(Locale.getDefault(), "%.1f°C", weatherData.main.temp)
         _temperature.value = formattedTemp
-        lastFetchedWeatherTemp = formattedTemp // Store for saving
+        lastFetchedWeatherTemp = formattedTemp
     }
 
     private fun processForecastResponse(response: ForecastResponse) {
-        // 1. Group all forecast items by their date (e.g., "2023-10-27")
         val groupedByDay = response.list.groupBy { it.dtTxt.substringBefore(" ") }
-
-        // 2. Process each day's data into a simplified DailyForecast object
         val dailyForecasts = groupedByDay.map { (dateStr, items) ->
-            // Find the minimum and maximum temperature for the day
             val minTemp = items.minOf { it.main.temp }
             val maxTemp = items.maxOf { it.main.temp }
-
-            // Get the day name (e.g., "Jumat") from the date string
             val dayFormat = SimpleDateFormat("EEEE", Locale("id", "ID"))
             val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(dateStr)
             val dayName = if (date != null) dayFormat.format(date) else "N/A"
-
-            // A simple way to choose a representative item: use the one from midday (12:00 or 15:00)
-            // or fall back to the first item for that day.
             val representativeItem = items.find { it.dtTxt.contains("12:00:00") } ?: items.first()
             val icon = representativeItem.weather.firstOrNull()?.icon ?: ""
             val iconUrl = if (icon.isNotEmpty()) "https://openweathermap.org/img/wn/$icon@2x.png" else ""
-            
-            // Get additional data from the representative item
             val description = representativeItem.weather.firstOrNull()?.description?.replaceFirstChar { it.titlecase(Locale.getDefault()) } ?: "N/A"
             val humidity = representativeItem.main.humidity?.toString() ?: "N/A"
             val windSpeed = representativeItem.wind.speed.toString()
@@ -226,101 +210,42 @@ class MainViewModel : ViewModel() {
                 windSpeed = "$windSpeed m/s",
                 precipitation = "$precipitation%"
             )
-        }.take(5) // Ensure we only display 5 days of forecast
-
-        // 3. Update the LiveData to notify the UI
+        }.take(5)
         _forecastData.value = dailyForecasts
     }
-
 
     private fun showError(message: String) {
         _isDataReadyToSave.value = false
         _aqiStatus.value = message
         _aqiValue.value = "--"
         _lastUpdated.value = ""
-        _recommendationText.value = "Tidak dapat memuat rekomendasi."
-        // Reset nilai polutan
         _pm25Value.value = "-- µg/m³"
         _coValue.value = "-- µg/m³"
         _o3Value.value = "-- µg/m³"
         _no2Value.value = "-- µg/m³"
         _so2Value.value = "-- µg/m³"
-        // Reset nilai cuaca
         _temperature.value = "--°C"
         _weatherDescription.value = "Gagal memuat"
-        _weatherIconUrl.value = ""
-        // Reset forecast
         _forecastData.value = emptyList()
-        lastFetchedWeatherTemp = null
-        lastFetchedWeatherCondition = null
     }
 
-    private fun convertAqiToIndicatorPosition(aqi: Int): Float {
-        return when (aqi) {
-            1 -> 0.1f   // 10% dari kiri
-            2 -> 0.3f   // 30%
-            3 -> 0.5f   // 50% (tengah)
-            4 -> 0.7f   // 70%
-            5 -> 0.9f   // 90%
-            else -> 0.5f
-        }
+    // Helper functions for AQI conversion...
+    private fun convertAqiToIndicatorPosition(aqi: Int): Float = when(aqi) { 1->0.1f; 2->0.3f; 3->0.5f; 4->0.7f; 5->0.9f; else->0.5f }
+    private fun getHealthRecommendation(aqi: Int): String = when(aqi) {
+        1 -> "Kualitas udara sangat baik. Waktu yang tepat untuk aktivitas di luar ruangan."
+        2 -> "Kualitas udara cukup baik. Nikmati harimu!"
+        3 -> "Kurangi aktivitas berat di luar ruangan jika Anda memiliki sensitivitas pernapasan."
+        4 -> "Udara tidak sehat. Batasi waktu di luar dan pertimbangkan menggunakan masker."
+        5 -> "Sangat tidak sehat. Hindari semua aktivitas di luar ruangan jika memungkinkan."
+        else -> "Data tidak tersedia."
     }
+    private fun getRecommendationIcon(aqi: Int): Int = when(aqi) { 1,2->R.drawable.ic_recommend_good; 3->R.drawable.ic_recommend_moderate; 4,5->R.drawable.ic_recommend_bad; else->R.drawable.ic_recommend_moderate }
+    private fun convertAqiValueToString(aqi: Int): String = when(aqi) { 1->"25"; 2->"75"; 3->"125"; 4->"175"; 5->"250"; else->"--" }
+    private fun convertAqiToStatus(aqi: Int): String = when(aqi) { 1->"Baik"; 2->"Cukup"; 3->"Sedang"; 4->"Buruk"; 5->"Sangat Buruk"; else->"Tidak Diketahui" }
+    private fun convertAqiToDrawable(aqi: Int): Int = when(aqi) { 1->R.drawable.status_bg_green; 2->R.drawable.status_bg_yellow; 3->R.drawable.status_bg_orange; 4->R.drawable.status_bg_red; 5->R.drawable.status_bg_maroon; else->R.drawable.status_bg_yellow }
 
-    private fun getHealthRecommendation(aqi: Int): String {
-        return when (aqi) {
-            1 -> "Kualitas udara sangat baik. Waktu yang tepat untuk aktivitas di luar ruangan."
-            2 -> "Kualitas udara cukup baik. Nikmati harimu!"
-            3 -> "Kurangi aktivitas berat di luar ruangan jika Anda memiliki sensitivitas pernapasan."
-            4 -> "Udara tidak sehat. Batasi waktu di luar dan pertimbangkan menggunakan masker."
-            5 -> "Sangat tidak sehat. Hindari semua aktivitas di luar ruangan jika memungkinkan."
-            else -> "Data tidak tersedia."
-        }
-    }
-
-    private fun getRecommendationIcon(aqi: Int): Int {
-        return when (aqi) {
-            1, 2 -> R.drawable.ic_recommend_good
-            3 -> R.drawable.ic_recommend_moderate
-            4, 5 -> R.drawable.ic_recommend_bad
-            else -> R.drawable.ic_recommend_moderate
-        }
-    }
-
-    private fun convertAqiValueToString(aqi: Int): String {
-        return when (aqi) {
-            1 -> "25"  // Baik
-            2 -> "75"  // Cukup
-            3 -> "125" // Sedang
-            4 -> "175" // Buruk
-            5 -> "250" // Sangat Buruk
-            else -> "--"
-        }
-    }
-
-    private fun convertAqiToStatus(aqi: Int): String {
-        return when (aqi) {
-            1 -> "Baik"
-            2 -> "Cukup"
-            3 -> "Sedang"
-            4 -> "Buruk"
-            5 -> "Sangat Buruk"
-            else -> "Tidak Diketahui"
-        }
-    }
-
-    private fun convertAqiToDrawable(aqi: Int): Int {
-        return when (aqi) {
-            1 -> R.drawable.status_bg_green
-            2 -> R.drawable.status_bg_yellow
-            3 -> R.drawable.status_bg_orange
-            4 -> R.drawable.status_bg_red
-            5 -> R.drawable.status_bg_maroon
-            else -> R.drawable.status_bg_yellow
-        }
-    }
-
+    // --- SAVE BUTTON LOGIC ---
     fun onSaveButtonClicked() {
-        // Dapatkan referensi database yang spesifik untuk user ini
         val database = getDatabaseReference()
         if (database == null) {
             _saveStatus.value = Event("Gagal: Anda harus login untuk menyimpan riwayat.")
@@ -332,15 +257,15 @@ class MainViewModel : ViewModel() {
             return
         }
 
-        val historyId = database.push().key
-        if (historyId == null) {
-            _saveStatus.value = Event("Gagal membuat ID di database.")
-            return
-        }
+        val historyId = database.push().key ?: return
+
+        // CRITICAL FIX: Use the raw coordinates formatted exactly how HistoryAdapter expects them
+        // Your adapter uses getCityName() which expects "Lat: x, Lon: y"
+        val locationStringForDb = "Lat: $currentLatitude, Lon: $currentLongitude"
 
         val historyItem = HistoryItem(
             id = historyId,
-            location = lastFetchedLocation,
+            location = locationStringForDb, // Save exact coordinates
             aqiValue = lastFetchedAqiValue,
             aqiStatus = lastFetchedAqiStatus,
             timestamp = System.currentTimeMillis(),
@@ -357,17 +282,12 @@ class MainViewModel : ViewModel() {
                 _saveStatus.value = Event("Gagal menyimpan data: ${exception.message}")
             }
     }
+
     open class Event<out T>(private val content: T) {
         var hasBeenHandled = false
             private set
-
         fun getContentIfNotHandled(): T? {
-            return if (hasBeenHandled) {
-                null
-            } else {
-                hasBeenHandled = true
-                content
-            }
+            return if (hasBeenHandled) null else { hasBeenHandled = true; content }
         }
     }
 }
