@@ -1,13 +1,18 @@
 package com.example.aircare.ui.settings
 
+import android.Manifest
+import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.aircare.AuthActivity
 import com.example.aircare.databinding.FragmentSettingsBinding
@@ -17,6 +22,24 @@ class SettingsFragment : Fragment() {
 
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
+
+    // Define SharedPreferences constants
+    private val PREFS_NAME = "AirCarePrefs"
+    private val NOTIFICATIONS_ENABLED = "notifications_enabled"
+
+    // Permission launcher
+    private val requestPermissionLauncher = 
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+            if (isGranted) {
+                // Permission is granted. Save the setting.
+                saveNotificationSetting(true)
+                Toast.makeText(requireContext(), "Notifikasi diaktifkan", Toast.LENGTH_SHORT).show()
+            } else {
+                // Permission is denied. Revert the switch and inform the user.
+                binding.switchNotifications.isChecked = false
+                Toast.makeText(requireContext(), "Izin notifikasi ditolak", Toast.LENGTH_SHORT).show()
+            }
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -28,12 +51,17 @@ class SettingsFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        loadSettings()
         setupActions()
     }
 
+    private fun loadSettings() {
+        val sharedPreferences = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val notificationsEnabled = sharedPreferences.getBoolean(NOTIFICATIONS_ENABLED, true) // Default to true
+        binding.switchNotifications.isChecked = notificationsEnabled
+    }
+
     private fun setupActions() {
-        // --- PERUBAHAN ADA DI SINI ---
-        // Sekarang tombol ini akan memanggil fungsi showPrivacyDialog()
         binding.btnPrivacyPolicy.setOnClickListener {
             showPrivacyDialog()
         }
@@ -43,14 +71,63 @@ class SettingsFragment : Fragment() {
         }
 
         binding.switchNotifications.setOnCheckedChangeListener { _, isChecked ->
-            val status = if (isChecked) "aktif" else "nonaktif"
-            Toast.makeText(requireContext(), "Notifikasi $status", Toast.LENGTH_SHORT).show()
+            if (isChecked) {
+                askForNotificationPermission()
+            } else {
+                saveNotificationSetting(false)
+                Toast.makeText(requireContext(), "Notifikasi dinonaktifkan", Toast.LENGTH_SHORT).show()
+            }
         }
 
         binding.btnLogout.setOnClickListener {
             showLogoutConfirmation()
         }
     }
+
+    private fun askForNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    // Permission has already been granted
+                    saveNotificationSetting(true)
+                    Toast.makeText(requireContext(), "Notifikasi diaktifkan", Toast.LENGTH_SHORT).show()
+                }
+                shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS) -> {
+                    // Explain to the user why we need this permission
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("Izin Notifikasi")
+                        .setMessage("Aplikasi ini memerlukan izin notifikasi untuk memberitahu Anda saat ada pembaruan penting.")
+                        .setPositiveButton("Izinkan") { _, _ ->
+                            requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                        .setNegativeButton("Jangan Izinkan") { _, _ ->
+                            binding.switchNotifications.isChecked = false
+                        }
+                        .show()
+                }
+                else -> {
+                    // Directly ask for the permission
+                    requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        } else {
+            // For older Android versions, no runtime permission is needed
+            saveNotificationSetting(true)
+            Toast.makeText(requireContext(), "Notifikasi diaktifkan", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun saveNotificationSetting(isEnabled: Boolean) {
+        val sharedPreferences = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            putBoolean(NOTIFICATIONS_ENABLED, isEnabled)
+            apply()
+        }
+    }
+
     private fun showPrivacyDialog() {
         val isiKebijakan = """
             1. PENGUMPULAN DATA
