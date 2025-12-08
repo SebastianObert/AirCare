@@ -1,7 +1,6 @@
 package com.example.aircare
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.os.Bundle
@@ -17,7 +16,6 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
-import com.example.aircare.util.NotificationHelper
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import java.util.*
@@ -26,9 +24,6 @@ class HomeFragment : Fragment() {
 
     private val mainViewModel: MainViewModel by viewModels()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-
-    private val PREFS_NAME = "AirCarePrefs"
-    private val NOTIFICATIONS_ENABLED = "notifications_enabled"
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -103,11 +98,6 @@ class HomeFragment : Fragment() {
 
         mainViewModel.saveStatus.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandled()?.let { message ->
-                val sharedPreferences = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                val notificationsEnabled = sharedPreferences.getBoolean(NOTIFICATIONS_ENABLED, true)
-                if (notificationsEnabled) {
-                    NotificationHelper.showSaveSuccessNotification(requireContext())
-                }
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
             }
         }

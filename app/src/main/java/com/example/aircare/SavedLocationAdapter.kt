@@ -7,6 +7,7 @@ import com.example.aircare.databinding.ItemSavedLocationBinding
 
 class SavedLocationAdapter(
     private val locations: List<SavedLocation>,
+    private val onItemClick: (SavedLocation) -> Unit,
     private val onDeleteClick: (SavedLocation) -> Unit
 ) : RecyclerView.Adapter<SavedLocationAdapter.ViewHolder>() {
 
@@ -19,7 +20,11 @@ class SavedLocationAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val location = locations[position]
+
         holder.binding.tvLocationName.text = location.name
+        holder.itemView.setOnClickListener {
+            onItemClick(location)
+        }
         holder.binding.ivDeleteLocation.setOnClickListener {
             onDeleteClick(location)
         }

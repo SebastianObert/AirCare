@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
@@ -59,7 +60,8 @@ fun getAqiColor(status: String): Color {
 fun HomeScreen(
     viewModel: MainViewModel,
     onChangeLocationClick: () -> Unit,
-    onSaveClick: () -> Unit
+    onSaveClick: () -> Unit,
+    onRefreshLocationClick: () -> Unit // <--- 1. Parameter Baru
 ) {
     // State Observation
     val location by viewModel.location.observeAsState("Memuat...")
@@ -122,6 +124,7 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // TOMBOL SEARCH LOKASI
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -138,12 +141,31 @@ fun HomeScreen(
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = if (lastUpdated.isNotEmpty()) "Diperbarui: $lastUpdated" else "",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.8f),
-                            textAlign = TextAlign.Center
-                        )
+
+                        // INFO UPDATE & TOMBOL REFRESH GPS (MODIFIKASI DI SINI)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = if (lastUpdated.isNotEmpty()) "Diperbarui: $lastUpdated" else "",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.8f),
+                                textAlign = TextAlign.Center
+                            )
+
+                            // TOMBOL REFRESH KECIL
+                            if (lastUpdated.isNotEmpty()) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = onRefreshLocationClick,
+                                    modifier = Modifier.size(20.dp) // Ukuran kecil pas
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Refresh,
+                                        contentDescription = "Refresh GPS",
+                                        tint = Color.White.copy(alpha = 0.9f)
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
@@ -160,7 +182,6 @@ fun HomeScreen(
                             Box(contentAlignment = Alignment.Center) {
 
                                 // 1. EFEK RADAR (BACKGROUND)
-                                // Diletakkan sebelum lingkaran putih agar berada di belakang
                                 RadarRippleEffect(color = Color.White)
 
                                 // 2. LINGKARAN PUTIH UTAMA (FOREGROUND)
@@ -363,11 +384,10 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    // Placeholder or loading state for forecast
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(180.dp) // Typical height for a forecast card
+                            .height(180.dp)
                             .clip(RoundedCornerShape(24.dp))
                             .background(Color.White),
                         contentAlignment = Alignment.Center
@@ -388,11 +408,10 @@ fun HomeScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(350.dp) // Area gerak lebih tinggi agar bubble leluasa
+                        .height(350.dp)
                         .clip(RoundedCornerShape(24.dp))
                         .background(Color.White)
                 ) {
-                    // Background Art (Gradient tipis)
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -403,67 +422,47 @@ fun HomeScreen(
                             )
                     )
 
-                    // 1. PM2.5 (Utama)
                     FloatingBubble(
                         title = "PM2.5", value = pm25, unit = "µg/m³",
-                        bubbleColor = Color(0xFFE3F2FD),
-                        textColor = Color(0xFF1565C0),
-                        size = 140.dp,
-                        initialAlign = BiasAlignment(0f, -0.2f),
-                        moveRange = 40f,
-                        speedMillis = 4000,
+                        bubbleColor = Color(0xFFE3F2FD), textColor = Color(0xFF1565C0),
+                        size = 140.dp, initialAlign = BiasAlignment(0f, -0.2f),
+                        moveRange = 40f, speedMillis = 4000,
                         modifier = Modifier.zIndex(if (selectedBubble == "PM2.5") 1f else 0f),
                         onClick = { selectedBubble = "PM2.5" }
                     )
 
-                    // 2. CO
                     FloatingBubble(
                         title = "CO", value = co, unit = "ppm",
-                        bubbleColor = Color(0xFFE0F2F1),
-                        textColor = Color(0xFF00695C),
-                        size = 110.dp,
-                        initialAlign = BiasAlignment(-0.7f, -0.8f),
-                        moveRange = 30f,
-                        speedMillis = 3500,
+                        bubbleColor = Color(0xFFE0F2F1), textColor = Color(0xFF00695C),
+                        size = 110.dp, initialAlign = BiasAlignment(-0.7f, -0.8f),
+                        moveRange = 30f, speedMillis = 3500,
                         modifier = Modifier.zIndex(if (selectedBubble == "CO") 1f else 0f),
                         onClick = { selectedBubble = "CO" }
                     )
 
-                    // 3. NO2
                     FloatingBubble(
                         title = "NO₂", value = no2, unit = "ppb",
-                        bubbleColor = Color(0xFFF3E5F5),
-                        textColor = Color(0xFF6A1B9A),
-                        size = 110.dp,
-                        initialAlign = BiasAlignment(0.7f, -0.7f),
-                        moveRange = 35f,
-                        speedMillis = 3000,
+                        bubbleColor = Color(0xFFF3E5F5), textColor = Color(0xFF6A1B9A),
+                        size = 110.dp, initialAlign = BiasAlignment(0.7f, -0.7f),
+                        moveRange = 35f, speedMillis = 3000,
                         modifier = Modifier.zIndex(if (selectedBubble == "NO₂") 1f else 0f),
                         onClick = { selectedBubble = "NO₂" }
                     )
 
-                    // 4. O₃
                     FloatingBubble(
                         title = "O₃", value = o3, unit = "ppb",
-                        bubbleColor = Color(0xFFFFF3E0),
-                        textColor = Color(0xFFEF6C00),
-                        size = 120.dp,
-                        initialAlign = BiasAlignment(-0.6f, 0.7f),
-                        moveRange = 30f,
-                        speedMillis = 4500,
+                        bubbleColor = Color(0xFFFFF3E0), textColor = Color(0xFFEF6C00),
+                        size = 120.dp, initialAlign = BiasAlignment(-0.6f, 0.7f),
+                        moveRange = 30f, speedMillis = 4500,
                         modifier = Modifier.zIndex(if (selectedBubble == "O₃") 1f else 0f),
                         onClick = { selectedBubble = "O₃" }
                     )
 
-                    // 5. SO2
                     FloatingBubble(
                         title = "SO₂", value = so2, unit = "ppb",
-                        bubbleColor = Color(0xFFFCE4EC),
-                        textColor = Color(0xFFAD1457),
-                        size = 100.dp,
-                        initialAlign = BiasAlignment(0.7f, 0.6f),
-                        moveRange = 25f,
-                        speedMillis = 3800,
+                        bubbleColor = Color(0xFFFCE4EC), textColor = Color(0xFFAD1457),
+                        size = 100.dp, initialAlign = BiasAlignment(0.7f, 0.6f),
+                        moveRange = 25f, speedMillis = 3800,
                         modifier = Modifier.zIndex(if (selectedBubble == "SO₂") 1f else 0f),
                         onClick = { selectedBubble = "SO₂" }
                     )
@@ -564,13 +563,9 @@ fun ForecastDetailRow(iconRes: Int, value: String, tint: Color) {
 // EFEK RADAR / RIPPLE
 @Composable
 fun RadarRippleEffect(color: Color) {
-    // Kita membuat 3 lingkaran gelombang dengan jeda waktu berbeda agar terlihat continue
     Box(contentAlignment = Alignment.Center) {
-        // Gelombang 1 (Delay 0ms)
         RadarWave(color = color, delay = 0)
-        // Gelombang 2 (Delay 1000ms)
         RadarWave(color = color, delay = 1000)
-        // Gelombang 3 (Delay 2000ms)
         RadarWave(color = color, delay = 2000)
     }
 }
@@ -580,8 +575,8 @@ fun RadarWave(color: Color, delay: Int) {
     val infiniteTransition = rememberInfiniteTransition(label = "radar")
 
     val scale by infiniteTransition.animateFloat(
-        initialValue = 1f, // Mulai seukuran lingkaran utama
-        targetValue = 1.6f, // Membesar sampai 1.6x
+        initialValue = 1f,
+        targetValue = 1.6f,
         animationSpec = infiniteRepeatable(
             animation = tween(3000, delayMillis = delay, easing = LinearOutSlowInEasing),
             repeatMode = RepeatMode.Restart
@@ -590,8 +585,8 @@ fun RadarWave(color: Color, delay: Int) {
     )
 
     val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f, // Mulai agak transparan
-        targetValue = 0f,    // Menghilang sepenuhnya di akhir
+        initialValue = 0.4f,
+        targetValue = 0f,
         animationSpec = infiniteRepeatable(
             animation = tween(3000, delayMillis = delay, easing = LinearOutSlowInEasing),
             repeatMode = RepeatMode.Restart
@@ -601,7 +596,7 @@ fun RadarWave(color: Color, delay: Int) {
 
     Box(
         modifier = Modifier
-            .size(140.dp) // Ukuran dasar sama dengan lingkaran putih utama
+            .size(140.dp)
             .scale(scale)
             .background(color.copy(alpha = alpha), CircleShape)
     )
@@ -624,7 +619,6 @@ fun FloatingBubble(
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "float")
 
-    // Animasi Y (Naik Turun)
     val dy by infiniteTransition.animateFloat(
         initialValue = -moveRange,
         targetValue = moveRange,
@@ -634,7 +628,6 @@ fun FloatingBubble(
         ), label = "dy"
     )
 
-    // Animasi X (Kiri Kanan)
     val dx by infiniteTransition.animateFloat(
         initialValue = -(moveRange / 2),
         targetValue = (moveRange / 2),
