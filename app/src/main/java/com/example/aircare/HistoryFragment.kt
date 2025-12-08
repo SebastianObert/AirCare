@@ -1,5 +1,6 @@
 package com.example.aircare
 
+import android.content.Context
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -11,6 +12,7 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.aircare.databinding.DialogAddNoteBinding
 import com.example.aircare.databinding.FragmentHistoryBinding
+import com.example.aircare.util.NotificationHelper
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.BarData
@@ -35,6 +37,10 @@ class HistoryFragment : Fragment() {
 
     private var valueEventListener: ValueEventListener? = null
 
+    // SharedPreferences constants
+    private val PREFS_NAME = "AirCarePrefs"
+    private val NOTIFICATIONS_ENABLED = "notifications_enabled"
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -53,9 +59,7 @@ class HistoryFragment : Fragment() {
         binding.rvHistory.layoutManager = LinearLayoutManager(context)
         binding.rvHistory.adapter = adapter
 
-        // Panggil fungsi untuk setup chart
         setupBarChart(binding.barChart)
-
         listenToDatabase()
     }
 
@@ -92,17 +96,14 @@ class HistoryFragment : Fragment() {
     }
 
     private fun setupBarChart(barChart: BarChart) {
-        // 1. Buat data dummy untuk BarChart
         val entries = ArrayList<BarEntry>()
-        entries.add(BarEntry(0f, 35f)) // PM2.5
-        entries.add(BarEntry(1f, 15f)) // CO
-        entries.add(BarEntry(2f, 25f)) // O3
-        entries.add(BarEntry(3f, 20f)) // NO2
-        entries.add(BarEntry(4f, 10f)) // SO2
+        entries.add(BarEntry(0f, 35f))
+        entries.add(BarEntry(1f, 15f))
+        entries.add(BarEntry(2f, 25f))
+        entries.add(BarEntry(3f, 20f))
+        entries.add(BarEntry(4f, 10f))
 
         val labels = arrayOf("PM2.5", "CO", "O3", "NO2", "SO2")
-
-        // 2. Buat DataSet dari data
         val dataSet = BarDataSet(entries, "Tingkat Polutan")
         dataSet.colors = listOf(
             Color.parseColor("#FFC107"),
@@ -114,29 +115,22 @@ class HistoryFragment : Fragment() {
         dataSet.valueTextColor = Color.BLACK
         dataSet.valueTextSize = 12f
 
-        // 3. Buat BarData dan set ke chart
         val barData = BarData(dataSet)
         barChart.data = barData
-
-        // 4. Konfigurasi tampilan chart
         barChart.description.isEnabled = false
         barChart.setDrawGridBackground(false)
         barChart.setDrawBarShadow(false)
         barChart.setFitBars(true)
         barChart.legend.isEnabled = false
 
-        // Konfigurasi Sumbu X (Label Polutan)
         val xAxis = barChart.xAxis
         xAxis.position = XAxis.XAxisPosition.BOTTOM
         xAxis.setDrawGridLines(false)
         xAxis.granularity = 1f
         xAxis.valueFormatter = IndexAxisValueFormatter(labels)
 
-        // Konfigurasi Sumbu Y (Kiri dan Kanan)
         barChart.axisLeft.axisMinimum = 0f
         barChart.axisRight.isEnabled = false
-
-        // 5. Animasikan dan refresh chart
         barChart.animateY(1000)
         barChart.invalidate()
     }
@@ -154,7 +148,6 @@ class HistoryFragment : Fragment() {
 
         valueEventListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-
                 if (_binding == null || !isAdded) return
 
                 val tempList = mutableListOf<HistoryItem>()
@@ -166,13 +159,13 @@ class HistoryFragment : Fragment() {
                     _binding?.apply {
                         tvEmptyHistory.visibility = View.VISIBLE
                         rvHistory.visibility = View.GONE
-                        cardChart.visibility = View.GONE // Sembunyikan chart jika data kosong
+                        cardChart.visibility = View.GONE
                     }
                 } else {
                     _binding?.apply {
                         tvEmptyHistory.visibility = View.GONE
                         rvHistory.visibility = View.VISIBLE
-                        cardChart.visibility = View.VISIBLE // Tampilkan chart jika ada data
+                        cardChart.visibility = View.VISIBLE
                         adapter.updateList(tempList.sortedByDescending { it.timestamp })
                     }
                 }
@@ -194,6 +187,13 @@ class HistoryFragment : Fragment() {
         database?.child(item.id ?: return)?.removeValue()
             ?.addOnSuccessListener {
                 Toast.makeText(context, "Data berhasil dihapus", Toast.LENGTH_SHORT).show()
+
+                val sharedPreferences = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val notificationsEnabled = sharedPreferences.getBoolean(NOTIFICATIONS_ENABLED, true)
+
+                if (notificationsEnabled) {
+                    NotificationHelper.showDeleteSuccessNotification(requireContext())
+                }
             }
             ?.addOnFailureListener {
                 Toast.makeText(context, "Gagal menghapus data", Toast.LENGTH_SHORT).show()

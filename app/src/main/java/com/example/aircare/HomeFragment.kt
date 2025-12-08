@@ -1,6 +1,8 @@
 package com.example.aircare
 
 import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.os.Bundle
@@ -16,8 +18,10 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
+import com.example.aircare.util.NotificationHelper
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import java.util.*
 
 class HomeFragment : Fragment() {
@@ -25,13 +29,15 @@ class HomeFragment : Fragment() {
     private val mainViewModel: MainViewModel by viewModels()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
+    private val PREFS_NAME = "AirCarePrefs"
+    private val NOTIFICATIONS_ENABLED = "notifications_enabled"
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            getLastLocation()
+            fetchCurrentLocation()
         } else {
-            // Kita bisa handle error state di ViewModel jika mau ditampilkan di UI Compose
             Toast.makeText(context, "Izin lokasi ditolak", Toast.LENGTH_SHORT).show()
         }
     }
@@ -40,22 +46,24 @@ class HomeFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        // Return ComposeView
         return ComposeView(requireContext()).apply {
-            // Strategi agar Compose view didestroy saat Fragment view didestroy
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-
             setContent {
-                // Panggil Composable Screen kita
-                // Pastikan tema Material diset (biasanya di MainActivity, tapi aman dipanggil di sini juga)
                 MaterialTheme {
                     HomeScreen(
                         viewModel = mainViewModel,
+
                         onChangeLocationClick = {
                             findNavController().navigate(R.id.action_homeFragment_to_searchLocationFragment)
                         },
+
                         onSaveClick = {
                             mainViewModel.onSaveButtonClicked()
+                        },
+
+                        onRefreshLocationClick = {
+                            Toast.makeText(context, "Mencari lokasi terkini...", Toast.LENGTH_SHORT).show()
+                            checkLocationPermission()
                         }
                     )
                 }
@@ -67,50 +75,62 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+        // Create notification channel on view creation
+        NotificationHelper.createNotificationChannel(requireContext())
+        setupObservers()
 
-        setupObservers() // Untuk Toast/Feedback non-UI
+        val args = arguments
+        if (args != null && args.getBoolean("isFromProfile", false)) {
+            val lat = args.getDouble("targetLat")
+            val lon = args.getDouble("targetLon")
+            val name = args.getString("targetName") ?: "Lokasi Tersimpan"
 
-        // Handle result dari SearchLocationFragment (Logika sama persis)
-        findNavController().currentBackStackEntry?.savedStateHandle?.getLiveData<Bundle>("location_data")
-            ?.observe(viewLifecycleOwner) { result ->
-                if (result.getBoolean("useCurrentLocation")) {
-                    checkLocationPermission()
-                } else {
-                    val latitude = result.getDouble("latitude")
-                    val longitude = result.getDouble("longitude")
-                    val locationName = result.getString("locationName")
+            mainViewModel.updateLocationAndFetchData(lat, lon, name)
+            arguments?.clear()
 
-                    if (locationName != null) {
-                        mainViewModel.updateLocationAndFetchData(latitude, longitude, locationName)
+        } else {
+            findNavController().currentBackStackEntry?.savedStateHandle?.getLiveData<Bundle>("location_data")
+                ?.observe(viewLifecycleOwner) { result ->
+                    if (result.getBoolean("useCurrentLocation")) {
+                        checkLocationPermission()
+                    } else {
+                        val lat = result.getDouble("latitude")
+                        val lon = result.getDouble("longitude")
+                        val name = result.getString("locationName") ?: "Lokasi Terpilih"
+                        mainViewModel.updateLocationAndFetchData(lat, lon, name)
                     }
+                    findNavController().currentBackStackEntry?.savedStateHandle?.remove<Bundle>("location_data")
                 }
-                findNavController().currentBackStackEntry?.savedStateHandle?.remove<Bundle>("location_data")
-            }
 
-        if (!mainViewModel.isInitialLocationFetched) {
-            checkLocationPermission()
+            if (!mainViewModel.isInitialLocationFetched) {
+                checkLocationPermission()
+            }
         }
     }
 
     private fun setupObservers() {
-        // Kita hanya perlu observe hal-hal yang bersifat "One-shot event" seperti Toast
-        // Data UI sudah di-observe langsung di dalam Composable (HomeScreen.kt)
-
         mainViewModel.saveStatus.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandled()?.let { message ->
                 Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+
+                // Check notification preferences before showing notification
+                val sharedPreferences = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val notificationsEnabled = sharedPreferences.getBoolean(NOTIFICATIONS_ENABLED, true)
+
+                if (notificationsEnabled) {
+                    NotificationHelper.showSaveSuccessNotification(requireContext())
+                }
             }
         }
     }
 
-    // Logika Lokasi tetap sama (tidak ada perubahan)
     private fun checkLocationPermission() {
         when {
             ContextCompat.checkSelfPermission(
                 requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED -> {
-                getLastLocation()
+                fetchCurrentLocation()
             }
             else -> {
                 requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -118,44 +138,51 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun getLastLocation() {
+    @SuppressLint("MissingPermission")
+    private fun fetchCurrentLocation() {
         try {
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                if (location != null) {
-                    val latitude = location.latitude
-                    val longitude = location.longitude
-                    val addressText = getAddressFromLocation(latitude, longitude)
-                    mainViewModel.updateLocationAndFetchData(latitude, longitude, addressText)
-                } else {
-                   // Handle null location
+            fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+                .addOnSuccessListener { location ->
+                    if (location != null) {
+                        val lat = location.latitude
+                        val lon = location.longitude
+                        val addressText = getAddressFromLocation(lat, lon)
+                        mainViewModel.updateLocationAndFetchData(lat, lon, addressText)
+                    } else {
+                        Toast.makeText(context, "Gagal dapat lokasi. Pastikan GPS aktif.", Toast.LENGTH_LONG).show()
+                    }
                 }
-            }
-        } catch (e: SecurityException) {
-             // Handle error
+                .addOnFailureListener {
+                    Toast.makeText(context, "Error lokasi: ${it.message}", Toast.LENGTH_SHORT).show()
+                }
+        } catch (e: Exception) {
+            Toast.makeText(context, "Error izin: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
-    private fun getAddressFromLocation(latitude: Double, longitude: Double): String {
+    private fun getAddressFromLocation(lat: Double, lon: Double): String {
         if (context == null) return "Lokasi tidak diketahui"
         return try {
             val geocoder = Geocoder(requireContext(), Locale.getDefault())
-            val addresses = geocoder.getFromLocation(latitude, longitude, 1)
+            @Suppress("DEPRECATION")
+            val addresses = geocoder.getFromLocation(lat, lon, 1)
             if (!addresses.isNullOrEmpty()) {
                 val address = addresses[0]
+                val street = address.thoroughfare
+                val district = address.subLocality
                 val city = address.locality
-                val adminArea = address.subAdminArea
-                val country = address.countryName
                 when {
-                    !city.isNullOrEmpty() -> "$city, $country"
-                    !adminArea.isNullOrEmpty() -> "$adminArea, $country"
-                    else -> country ?: "Lokasi tidak diketahui"
+                    !street.isNullOrEmpty() -> street
+                    !district.isNullOrEmpty() -> district
+                    !city.isNullOrEmpty() -> city
+                    else -> "Lokasi Terkini"
                 }
             } else {
-                "Lokasi tidak diketahui"
+                "Lokasi Terkini"
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            "Gagal menerjemahkan lokasi"
+            "Lokasi Terkini"
         }
     }
 }

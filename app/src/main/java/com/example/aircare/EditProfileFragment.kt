@@ -1,5 +1,6 @@
 package com.example.aircare
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -8,6 +9,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.aircare.databinding.FragmentEditProfileBinding
+import com.example.aircare.util.NotificationHelper
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 
@@ -17,6 +19,10 @@ class EditProfileFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var auth: FirebaseAuth
+
+    // SharedPreferences constants
+    private val PREFS_NAME = "AirCarePrefs"
+    private val NOTIFICATIONS_ENABLED = "notifications_enabled"
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentEditProfileBinding.inflate(inflater, container, false)
@@ -60,6 +66,15 @@ class EditProfileFragment : Fragment() {
             .addOnSuccessListener {
                 if (isAdded && context != null) {
                     Toast.makeText(context, "Nama berhasil diperbarui!", Toast.LENGTH_SHORT).show()
+
+                    // Check notification preferences and show notification
+                    val sharedPreferences = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    val notificationsEnabled = sharedPreferences.getBoolean(NOTIFICATIONS_ENABLED, true)
+
+                    if (notificationsEnabled) {
+                        NotificationHelper.showProfileUpdateSuccessNotification(requireContext())
+                    }
+
                     findNavController().popBackStack()
                 }
             }

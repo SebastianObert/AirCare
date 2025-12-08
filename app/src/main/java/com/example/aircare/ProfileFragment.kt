@@ -21,6 +21,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.example.aircare.databinding.FragmentProfileBinding
+import com.example.aircare.util.NotificationHelper
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
@@ -35,6 +36,10 @@ class ProfileFragment : Fragment() {
 
     private var _binding: FragmentProfileBinding? = null
     private val binding get() = _binding!!
+
+    // SharedPreferences constants
+    private val PREFS_NAME = "AirCarePrefs"
+    private val NOTIFICATIONS_ENABLED = "notifications_enabled"
 
     // Firebase & Services
     private lateinit var auth: FirebaseAuth
@@ -80,10 +85,10 @@ class ProfileFragment : Fragment() {
 
     // Gallery & Camera Launchers
     private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { if (_binding != null) { Glide.with(this).load(it).circleCrop().into(binding.ivProfilePicture); saveImageUriToPrefs(it) } }
+        uri?.let { if (_binding != null) { Glide.with(this).load(it).circleCrop().into(binding.ivProfilePicture); saveImageUriToPrefs(it); showProfilePictureUpdateNotification() } }
     }
     private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        bitmap?.let { if (_binding != null) { Glide.with(this).load(it).circleCrop().into(binding.ivProfilePicture); saveBitmapToInternalStorage(it) } }
+        bitmap?.let { if (_binding != null) { Glide.with(this).load(it).circleCrop().into(binding.ivProfilePicture); saveBitmapToInternalStorage(it); showProfilePictureUpdateNotification() } }
     }
     private val cameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) cameraLauncher.launch(null)
@@ -113,7 +118,6 @@ class ProfileFragment : Fragment() {
     }
 
     private fun setupUI() {
-        // Setup RecyclerView (Klik item -> Pindah ke Home)
         savedLocationAdapter = SavedLocationAdapter(
             locations = savedLocationsList,
             onItemClick = { location -> navigateToHomeWithLocation(location) },
@@ -125,14 +129,12 @@ class ProfileFragment : Fragment() {
             adapter = savedLocationAdapter
         }
 
-        // Tombol Profil
         binding.ivProfilePicture.setOnClickListener { showPhotoSourceDialog() }
         binding.btnEditProfile.setOnClickListener {
             try { findNavController().navigate(R.id.action_profileFragment_to_editProfileFragment) }
             catch (e: Exception) { Toast.makeText(context, "Navigasi Error", Toast.LENGTH_SHORT).show() }
         }
 
-        // Tombol Set Rumah
         binding.btnSetHome.setOnClickListener {
             checkLocationAndSetHome()
         }
@@ -141,7 +143,6 @@ class ProfileFragment : Fragment() {
         loadProfilePicture()
     }
 
-    // --- FITUR SET LOKASI RUMAH ---
     private fun checkLocationAndSetHome() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             setHomeLocation()
@@ -157,10 +158,7 @@ class ProfileFragment : Fragment() {
         fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
             .addOnSuccessListener { location ->
                 if (location != null) {
-                    // 1. Dapatkan Alamat Asli
                     val addressText = getAddressName(location.latitude, location.longitude)
-
-                    // 2. Simpan sebagai "Rumah (Alamat)"
                     saveLocationToFirebase("Rumah ($addressText)", location.latitude, location.longitude)
                 } else {
                     Toast.makeText(context, "Gagal dapat lokasi. Pastikan GPS nyala.", Toast.LENGTH_SHORT).show()
@@ -194,7 +192,6 @@ class ProfileFragment : Fragment() {
             }
     }
 
-    // --- Navigasi ke Home saat lokasi diklik ---
     private fun navigateToHomeWithLocation(location: SavedLocation) {
         val bundle = Bundle().apply {
             putBoolean("isFromProfile", true)
@@ -209,7 +206,6 @@ class ProfileFragment : Fragment() {
         }
     }
 
-    // --- Utilitas ---
     private fun loadData() {
         userRef.addValueEventListener(userValueEventListener)
         locationsRef.addValueEventListener(locationsValueEventListener)
@@ -234,6 +230,7 @@ class ProfileFragment : Fragment() {
     private fun saveImageUriToPrefs(uri: Uri?) {
         activity?.getPreferences(Context.MODE_PRIVATE)?.edit()?.putString("profile_image_path_${auth.currentUser?.uid}", uri?.toString())?.apply()
     }
+
     private fun saveBitmapToInternalStorage(bitmap: Bitmap) {
         try {
             val file = File(context?.filesDir, "profile_${auth.currentUser?.uid}.jpg")
@@ -241,10 +238,20 @@ class ProfileFragment : Fragment() {
             saveImageUriToPrefs(Uri.fromFile(file))
         } catch (e: Exception) { e.printStackTrace() }
     }
+
+    private fun showProfilePictureUpdateNotification() {
+        val sharedPreferences = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val notificationsEnabled = sharedPreferences.getBoolean(NOTIFICATIONS_ENABLED, true)
+        if (notificationsEnabled) {
+            NotificationHelper.showProfilePictureUpdateSuccessNotification(requireContext())
+        }
+    }
+
     private fun loadProfilePicture() {
         val path = activity?.getPreferences(Context.MODE_PRIVATE)?.getString("profile_image_path_${auth.currentUser?.uid}", null)
         if (path != null) Glide.with(this).load(Uri.parse(path)).circleCrop().into(binding.ivProfilePicture)
     }
+
     private fun goToAuthActivity() {
         startActivity(Intent(requireActivity(), AuthActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK })
         activity?.finish()
