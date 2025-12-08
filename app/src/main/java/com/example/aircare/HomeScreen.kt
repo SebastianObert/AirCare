@@ -33,6 +33,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,7 +62,8 @@ fun HomeScreen(
     viewModel: MainViewModel,
     onChangeLocationClick: () -> Unit,
     onSaveClick: () -> Unit,
-    onRefreshLocationClick: () -> Unit // <--- 1. Parameter Baru
+    onRefreshLocationClick: () -> Unit,
+    onInboxClick: () -> Unit
 ) {
     // State Observation
     val location by viewModel.location.observeAsState("Memuat...")
@@ -119,15 +121,19 @@ fun HomeScreen(
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
 
-                    // --- Search & Updated Info ---
-                    Column(
+                    // --- Top Bar: Location and Inbox ---
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // TOMBOL SEARCH LOKASI
+                        // Left Spacer to balance the right icon
+                        Spacer(modifier = Modifier.width(48.dp))
+
+                        // Location button in the center
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
+                                .weight(1f)
                                 .clip(RoundedCornerShape(50))
                                 .clickable { onChangeLocationClick() }
                                 .background(Color.Black.copy(alpha = 0.15f))
@@ -135,35 +141,60 @@ fun HomeScreen(
                         ) {
                             Icon(Icons.Filled.LocationOn, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(location, style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = location,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1f)
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Icon(Icons.Rounded.Search, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Rounded.Search, contentDescription = "Search Location", tint = Color.White, modifier = Modifier.size(16.dp))
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // INFO UPDATE & TOMBOL REFRESH GPS (MODIFIKASI DI SINI)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = if (lastUpdated.isNotEmpty()) "Diperbarui: $lastUpdated" else "",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.8f),
-                                textAlign = TextAlign.Center
+                        // Inbox button on the right
+                        IconButton(
+                            onClick = onInboxClick,
+                            modifier = Modifier.width(48.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_inbox),
+                                contentDescription = "Inbox",
+                                tint = Color.White
                             )
+                        }
+                    }
 
-                            // TOMBOL REFRESH KECIL
-                            if (lastUpdated.isNotEmpty()) {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                IconButton(
-                                    onClick = onRefreshLocationClick,
-                                    modifier = Modifier.size(20.dp) // Ukuran kecil pas
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Refresh,
-                                        contentDescription = "Refresh GPS",
-                                        tint = Color.White.copy(alpha = 0.9f)
-                                    )
-                                }
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // --- Updated Info ---
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = if (lastUpdated.isNotEmpty()) "Diperbarui: $lastUpdated" else "",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.8f),
+                            textAlign = TextAlign.Center
+                        )
+
+                        // TOMBOL REFRESH KECIL
+                        if (lastUpdated.isNotEmpty()) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(
+                                onClick = onRefreshLocationClick,
+                                modifier = Modifier.size(20.dp) // Ukuran kecil pas
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Refresh,
+                                    contentDescription = "Refresh GPS",
+                                    tint = Color.White.copy(alpha = 0.9f)
+                                )
                             }
                         }
                     }

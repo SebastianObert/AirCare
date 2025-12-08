@@ -64,6 +64,9 @@ class HomeFragment : Fragment() {
                         onRefreshLocationClick = {
                             Toast.makeText(context, "Mencari lokasi terkini...", Toast.LENGTH_SHORT).show()
                             checkLocationPermission()
+                        },
+                        onInboxClick = {
+                            findNavController().navigate(R.id.action_homeFragment_to_inboxFragment)
                         }
                     )
                 }

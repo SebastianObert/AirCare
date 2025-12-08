@@ -6,6 +6,9 @@ import android.content.Context
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.aircare.R
+import com.example.aircare.data.Notification
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 
 object NotificationHelper {
 
@@ -31,11 +34,30 @@ object NotificationHelper {
         }
     }
 
+    private fun saveNotificationToFirebase(title: String, message: String) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            val database = FirebaseDatabase.getInstance().getReference("notifications").child(currentUser.uid)
+            val notificationId = database.push().key ?: ""
+            val notification = Notification(
+                id = notificationId,
+                title = title,
+                message = message,
+                timestamp = System.currentTimeMillis()
+            )
+            database.child(notificationId).setValue(notification)
+        }
+    }
+
     fun showSaveSuccessNotification(context: Context) {
+        val title = "Data Tersimpan"
+        val message = "Data kualitas udara berhasil disimpan ke riwayat."
+        saveNotificationToFirebase(title, message)
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notifications)
-            .setContentTitle("Data Tersimpan")
-            .setContentText("Data kualitas udara berhasil disimpan ke riwayat.")
+            .setContentTitle(title)
+            .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
 
@@ -45,10 +67,14 @@ object NotificationHelper {
     }
 
     fun showDeleteSuccessNotification(context: Context) {
+        val title = "Data Terhapus"
+        val message = "Data riwayat kualitas udara telah berhasil dihapus."
+        saveNotificationToFirebase(title, message)
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notifications)
-            .setContentTitle("Data Terhapus")
-            .setContentText("Data riwayat kualitas udara telah berhasil dihapus.")
+            .setContentTitle(title)
+            .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
 
@@ -58,10 +84,14 @@ object NotificationHelper {
     }
 
     fun showProfileUpdateSuccessNotification(context: Context) {
+        val title = "Profil Diperbarui"
+        val message = "Informasi profil Anda telah berhasil diperbarui."
+        saveNotificationToFirebase(title, message)
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notifications)
-            .setContentTitle("Profil Diperbarui")
-            .setContentText("Informasi profil Anda telah berhasil diperbarui.")
+            .setContentTitle(title)
+            .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
 
@@ -71,10 +101,14 @@ object NotificationHelper {
     }
 
     fun showProfilePictureUpdateSuccessNotification(context: Context) {
+        val title = "Foto Profil Diperbarui"
+        val message = "Foto profil Anda telah berhasil diperbarui."
+        saveNotificationToFirebase(title, message)
+
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notifications)
-            .setContentTitle("Foto Profil Diperbarui")
-            .setContentText("Foto profil Anda telah berhasil diperbarui.")
+            .setContentTitle(title)
+            .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
 

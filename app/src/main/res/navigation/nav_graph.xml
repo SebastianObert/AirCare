@@ -18,6 +18,9 @@
         <action
             android:id="@+id/action_homeFragment_to_searchLocationFragment"
             app:destination="@id/searchLocationFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_inboxFragment"
+            app:destination="@id/inboxFragment" />
 
     </fragment> <!-- Tag penutup untuk homeFragment sekarang di sini -->
 
@@ -68,5 +71,12 @@
         android:name="com.example.aircare.SearchLocationFragment"
         android:label="fragment_search_location"
         tools:layout="@layout/fragment_search_location" />
+
+    <!-- Fragment untuk Halaman Inbox -->
+    <fragment
+        android:id="@+id/inboxFragment"
+        android:name="com.example.aircare.InboxFragment"
+        android:label="fragment_inbox"
+        tools:layout="@layout/fragment_inbox" />
 
 </navigation>
