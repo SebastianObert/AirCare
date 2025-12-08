@@ -1,10 +1,12 @@
 package com.example.aircare
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.location.Geocoder
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -21,6 +23,7 @@ import com.bumptech.glide.Glide
 import com.example.aircare.databinding.FragmentProfileBinding
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import java.io.File
@@ -33,17 +36,17 @@ class ProfileFragment : Fragment() {
     private var _binding: FragmentProfileBinding? = null
     private val binding get() = _binding!!
 
-    // Firebase & Location Config
+    // Firebase & Services
     private lateinit var auth: FirebaseAuth
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var userRef: DatabaseReference
     private lateinit var locationsRef: DatabaseReference
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     // Adapter & Data
     private lateinit var savedLocationAdapter: SavedLocationAdapter
     private val savedLocationsList = mutableListOf<SavedLocation>()
 
-    // --- Listeners (Disimpan sebagai properti agar bersih) ---
+    // Listener Data Profil
     private val userValueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
             if (_binding == null) return
@@ -51,15 +54,15 @@ class ProfileFragment : Fragment() {
             if (user != null) {
                 binding.tvName.text = user.name
                 val sdf = SimpleDateFormat("MMM yyyy", Locale.getDefault())
-                // Menggunakan format string resource atau text biasa
                 binding.tvJoined.text = "Member sejak ${sdf.format(Date(user.memberSince ?: 0))}"
             }
         }
         override fun onCancelled(error: DatabaseError) {
-            context?.let { Toast.makeText(it, "Gagal memuat data profil", Toast.LENGTH_SHORT).show() }
+            context?.let { Toast.makeText(it, "Gagal memuat profil", Toast.LENGTH_SHORT).show() }
         }
     }
 
+    // Listener Riwayat Lokasi
     private val locationsValueEventListener = object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
             if (_binding == null) return
@@ -67,38 +70,23 @@ class ProfileFragment : Fragment() {
             snapshot.children.mapNotNullTo(savedLocationsList) { it.getValue(SavedLocation::class.java) }
             savedLocationAdapter.notifyDataSetChanged()
         }
-        override fun onCancelled(error: DatabaseError) {
-            context?.let { Toast.makeText(it, "Gagal memuat lokasi", Toast.LENGTH_SHORT).show() }
-        }
+        override fun onCancelled(error: DatabaseError) { }
     }
 
-    // --- Launchers untuk Kamera & Izin ---
-    private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let {
-            if (_binding != null) {
-                Glide.with(this).load(it).circleCrop().into(binding.ivProfilePicture)
-                saveImageUriToPrefs(it)
-            }
-        }
+    // Permission Launcher untuk tombol "Set Rumah"
+    private val locationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) setHomeLocation() else Toast.makeText(context, "Izin lokasi ditolak", Toast.LENGTH_SHORT).show()
     }
 
-    private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap: Bitmap? ->
-        bitmap?.let {
-            if (_binding != null) {
-                Glide.with(this).load(it).circleCrop().into(binding.ivProfilePicture)
-                saveBitmapToInternalStorage(it)
-            }
-        }
+    // Gallery & Camera Launchers
+    private val galleryLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { if (_binding != null) { Glide.with(this).load(it).circleCrop().into(binding.ivProfilePicture); saveImageUriToPrefs(it) } }
     }
-
+    private val cameraLauncher = registerForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        bitmap?.let { if (_binding != null) { Glide.with(this).load(it).circleCrop().into(binding.ivProfilePicture); saveBitmapToInternalStorage(it) } }
+    }
     private val cameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) cameraLauncher.launch(null)
-        else Toast.makeText(context, "Izin kamera diperlukan untuk mengambil foto", Toast.LENGTH_SHORT).show()
-    }
-
-    private val locationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-        if (isGranted) saveCurrentLocationAsHome()
-        else Toast.makeText(context, "Izin lokasi diperlukan untuk menyimpan rumah", Toast.LENGTH_LONG).show()
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -109,7 +97,6 @@ class ProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Inisialisasi Firebase & Auth
         auth = FirebaseAuth.getInstance()
         val userId = auth.currentUser?.uid
         if (userId == null) {
@@ -126,137 +113,140 @@ class ProfileFragment : Fragment() {
     }
 
     private fun setupUI() {
-        // Setup RecyclerView
-        savedLocationAdapter = SavedLocationAdapter(savedLocationsList) { location -> deleteLocation(location) }
+        // Setup RecyclerView (Klik item -> Pindah ke Home)
+        savedLocationAdapter = SavedLocationAdapter(
+            locations = savedLocationsList,
+            onItemClick = { location -> navigateToHomeWithLocation(location) },
+            onDeleteClick = { location -> deleteLocation(location) }
+        )
+
         binding.rvSavedLocations.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = savedLocationAdapter
         }
 
-        // Setup Buttons Click
+        // Tombol Profil
         binding.ivProfilePicture.setOnClickListener { showPhotoSourceDialog() }
         binding.btnEditProfile.setOnClickListener {
-            // Pastikan ID action di nav_graph sesuai
-            try {
-                findNavController().navigate(R.id.action_profileFragment_to_editProfileFragment)
-            } catch (e: Exception) {
-                Toast.makeText(context, "Navigasi belum diatur", Toast.LENGTH_SHORT).show()
-            }
+            try { findNavController().navigate(R.id.action_profileFragment_to_editProfileFragment) }
+            catch (e: Exception) { Toast.makeText(context, "Navigasi Error", Toast.LENGTH_SHORT).show() }
         }
-        binding.btnSaveHomeLocation.setOnClickListener { saveCurrentLocationAsHome() }
 
-        // Set email statis dari Auth
+        // Tombol Set Rumah
+        binding.btnSetHome.setOnClickListener {
+            checkLocationAndSetHome()
+        }
+
         binding.tvEmail.text = auth.currentUser?.email
-
         loadProfilePicture()
     }
 
+    // --- FITUR SET LOKASI RUMAH ---
+    private fun checkLocationAndSetHome() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            setHomeLocation()
+        } else {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun setHomeLocation() {
+        Toast.makeText(context, "Mencari lokasi rumah...", Toast.LENGTH_SHORT).show()
+
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            .addOnSuccessListener { location ->
+                if (location != null) {
+                    // 1. Dapatkan Alamat Asli
+                    val addressText = getAddressName(location.latitude, location.longitude)
+
+                    // 2. Simpan sebagai "Rumah (Alamat)"
+                    saveLocationToFirebase("Rumah ($addressText)", location.latitude, location.longitude)
+                } else {
+                    Toast.makeText(context, "Gagal dapat lokasi. Pastikan GPS nyala.", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(context, "Error lokasi: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun getAddressName(lat: Double, lon: Double): String {
+        return try {
+            val geocoder = Geocoder(requireContext(), Locale.getDefault())
+            @Suppress("DEPRECATION")
+            val list = geocoder.getFromLocation(lat, lon, 1)
+            if (!list.isNullOrEmpty()) {
+                val addr = list[0]
+                addr.thoroughfare ?: addr.subLocality ?: addr.locality ?: "Lokasi Terkini"
+            } else "Lokasi Terkini"
+        } catch (e: Exception) {
+            "Lokasi Terkini"
+        }
+    }
+
+    private fun saveLocationToFirebase(name: String, lat: Double, lon: Double) {
+        val key = locationsRef.push().key ?: return
+        val loc = SavedLocation(key, name, lat, lon)
+        locationsRef.child(key).setValue(loc)
+            .addOnSuccessListener {
+                Toast.makeText(context, "Lokasi Rumah berhasil diupdate!", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    // --- Navigasi ke Home saat lokasi diklik ---
+    private fun navigateToHomeWithLocation(location: SavedLocation) {
+        val bundle = Bundle().apply {
+            putBoolean("isFromProfile", true)
+            putDouble("targetLat", location.lat ?: 0.0)
+            putDouble("targetLon", location.lon ?: 0.0)
+            putString("targetName", location.name)
+        }
+        try {
+            findNavController().navigate(R.id.homeFragment, bundle)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Navigasi ke Home...", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // --- Utilitas ---
     private fun loadData() {
         userRef.addValueEventListener(userValueEventListener)
         locationsRef.addValueEventListener(locationsValueEventListener)
     }
 
-    // --- Logika Fungsional ---
+    private fun deleteLocation(location: SavedLocation) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Hapus")
+            .setMessage("Hapus '${location.name}'?")
+            .setPositiveButton("Ya") { _, _ -> locationsRef.child(location.id!!).removeValue() }
+            .setNegativeButton("Batal", null).show()
+    }
 
     private fun showPhotoSourceDialog() {
         val options = arrayOf("Kamera", "Galeri")
-        AlertDialog.Builder(requireContext())
-            .setTitle("Ganti Foto Profil")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> checkCameraPermissionAndLaunch()
-                    1 -> galleryLauncher.launch("image/*")
-                }
-            }
-            .show()
+        AlertDialog.Builder(requireContext()).setItems(options) { _, w ->
+            if (w == 0) { if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) cameraLauncher.launch(null) else cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }
+            else galleryLauncher.launch("image/*")
+        }.show()
     }
-
-    private fun checkCameraPermissionAndLaunch() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            cameraLauncher.launch(null)
-        } else {
-            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
-
-    private fun saveCurrentLocationAsHome() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            return
-        }
-
-        val userId = auth.currentUser?.uid ?: return
-        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-            if (location != null) {
-                val dbRef = FirebaseDatabase.getInstance().getReference("saved_locations").child(userId)
-                val locationId = dbRef.push().key ?: return@addOnSuccessListener
-                // Menggunakan timestamp sebagai ID unik sederhana jika diperlukan nama custom nanti
-                val homeLocation = SavedLocation(locationId, "Rumah (${SimpleDateFormat("dd/MM", Locale.getDefault()).format(Date())})", location.latitude, location.longitude)
-
-                dbRef.child(locationId).setValue(homeLocation).addOnSuccessListener {
-                    if (_binding != null) Toast.makeText(context, "Lokasi Rumah berhasil disimpan!", Toast.LENGTH_SHORT).show()
-                }
-            } else {
-                Toast.makeText(context, "Lokasi tidak ditemukan. Coba buka Google Maps dulu.", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    private fun deleteLocation(location: SavedLocation) {
-        val userId = auth.currentUser?.uid ?: return
-        val locationId = location.id ?: return
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("Hapus Lokasi")
-            .setMessage("Hapus '${location.name}' dari daftar?")
-            .setPositiveButton("Hapus") { _, _ ->
-                FirebaseDatabase.getInstance().getReference("saved_locations")
-                    .child(userId).child(locationId)
-                    .removeValue()
-                    .addOnSuccessListener {
-                        Toast.makeText(context, "Lokasi dihapus", Toast.LENGTH_SHORT).show()
-                    }
-            }
-            .setNegativeButton("Batal", null)
-            .show()
-    }
-
-    // --- Utilitas Gambar ---
 
     private fun saveImageUriToPrefs(uri: Uri?) {
-        val sharedPref = activity?.getPreferences(Context.MODE_PRIVATE) ?: return
-        with(sharedPref.edit()) {
-            putString("profile_image_path_${auth.currentUser?.uid}", uri?.toString())
-            apply()
-        }
+        activity?.getPreferences(Context.MODE_PRIVATE)?.edit()?.putString("profile_image_path_${auth.currentUser?.uid}", uri?.toString())?.apply()
     }
-
     private fun saveBitmapToInternalStorage(bitmap: Bitmap) {
-        val file = File(context?.filesDir, "profile_picture_${auth.currentUser?.uid}.jpg")
         try {
-            val stream = FileOutputStream(file)
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
-            stream.flush()
-            stream.close()
+            val file = File(context?.filesDir, "profile_${auth.currentUser?.uid}.jpg")
+            FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
             saveImageUriToPrefs(Uri.fromFile(file))
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        } catch (e: Exception) { e.printStackTrace() }
     }
-
     private fun loadProfilePicture() {
-        val sharedPref = activity?.getPreferences(Context.MODE_PRIVATE)
-        val path = sharedPref?.getString("profile_image_path_${auth.currentUser?.uid}", null)
-        if (path != null && _binding != null) {
-            Glide.with(this).load(Uri.parse(path)).circleCrop().into(binding.ivProfilePicture)
-        }
+        val path = activity?.getPreferences(Context.MODE_PRIVATE)?.getString("profile_image_path_${auth.currentUser?.uid}", null)
+        if (path != null) Glide.with(this).load(Uri.parse(path)).circleCrop().into(binding.ivProfilePicture)
     }
-
     private fun goToAuthActivity() {
-        val intent = Intent(requireActivity(), AuthActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        startActivity(intent)
+        startActivity(Intent(requireActivity(), AuthActivity::class.java).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK })
         activity?.finish()
     }
 
