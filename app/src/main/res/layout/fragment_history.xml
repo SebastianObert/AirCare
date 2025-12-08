@@ -4,19 +4,29 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#FAFAFA"
     android:fitsSystemWindows="true"
-    android:paddingStart="24dp"
-    android:paddingEnd="24dp"
-    android:paddingTop="16dp"
-    android:paddingBottom="16dp"
     tools:context=".HistoryFragment">
+
+    <View
+        android:id="@+id/view_header_background"
+        android:layout_width="0dp"
+        android:layout_height="220dp"
+        android:background="@drawable/background_history_header"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/tv_history_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="32dp"
         android:text="Riwayat Pengukuran"
         android:textAppearance="?attr/textAppearanceHeadlineSmall"
+        android:textColor="@android:color/white"
+        android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -24,8 +34,11 @@
         android:id="@+id/card_chart"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
         android:layout_marginTop="16dp"
-        app:cardElevation="4dp"
+        android:layout_marginEnd="24dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tv_history_title">
@@ -40,14 +53,27 @@
                 android:id="@+id/tv_chart_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Statistik Polutan Rata-rata"
+                android:text="Tren Suhu"
                 android:textAppearance="?attr/textAppearanceTitleMedium" />
 
-            <com.github.mikephil.charting.charts.BarChart
-                android:id="@+id/bar_chart"
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="250dp"
-                android:layout_marginTop="8dp" />
+                android:layout_marginTop="8dp">
+
+                <com.github.mikephil.charting.charts.LineChart
+                    android:id="@+id/line_chart"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <ProgressBar
+                    android:id="@+id/chart_progress_bar"
+                    style="?android:attr/progressBarStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:visibility="gone" />
+            </FrameLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -55,6 +81,7 @@
         android:id="@+id/tv_history_list_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
         android:layout_marginTop="24dp"
         android:text="Detail Riwayat"
         android:textAppearance="?attr/textAppearanceTitleMedium"
@@ -65,7 +92,11 @@
         android:id="@+id/rv_history"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:layout_marginStart="24dp"
         android:layout_marginTop="8dp"
+        android:layout_marginEnd="24dp"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

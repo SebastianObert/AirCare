@@ -6,7 +6,7 @@
     android:id="@+id/profile_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="#FAFAFA"
     android:fillViewport="true">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -18,17 +18,17 @@
             android:id="@+id/viewHeaderBackground"
             android:layout_width="match_parent"
             android:layout_height="160dp"
-            android:background="?attr/colorPrimary"
+            android:background="@drawable/background_profile_header"
             app:layout_constraintTop_toTopOf="parent" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Profil Saya"
-            android:textColor="?attr/colorOnPrimary"
+            android:textColor="@android:color/white"
             android:textStyle="bold"
-            android:textSize="20sp"
-            android:layout_marginTop="24dp"
+            android:textAppearance="?attr/textAppearanceHeadlineSmall"
+            android:layout_marginTop="32dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"/>
@@ -64,7 +64,7 @@
                     android:scaleType="centerCrop"
                     android:src="@drawable/ic_person"
                     app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
-                    app:strokeColor="?attr/colorPrimary"
+                    app:strokeColor="#4CAF50"
                     app:strokeWidth="2dp" />
 
                 <TextView
@@ -94,7 +94,7 @@
                     android:layout_marginTop="12dp"
                     android:clickable="false"
                     app:chipIcon="@drawable/ic_date_range"
-                    app:chipIconTint="?attr/colorPrimary"
+                    app:chipIconTint="#4CAF50"
                     tools:text="Member sejak 2025" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -145,9 +145,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Set Rumah"
-                android:textColor="?attr/colorPrimary"
+                android:textColor="#4CAF50"
                 app:icon="@drawable/ic_location_on"
-                app:iconTint="?attr/colorPrimary"
+                app:iconTint="#4CAF50"
                 android:paddingHorizontal="12dp"
                 android:minWidth="0dp"/>
 

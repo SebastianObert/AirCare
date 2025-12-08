@@ -327,12 +327,13 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // --- Forecast Chart ---
-                Column(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(24.dp))
                         .background(Color.White)
-                        .padding(20.dp)
+                        .padding(20.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     AndroidView(
                         modifier = Modifier
@@ -342,6 +343,7 @@ fun HomeScreen(
                             LineChart(context).apply {
                                 description.isEnabled = false
                                 axisRight.isEnabled = false
+                                setNoDataText("")
                                 xAxis.position = XAxis.XAxisPosition.BOTTOM
                                 xAxis.setDrawGridLines(false)
                                 xAxis.textColor = AndroidColor.GRAY
@@ -400,6 +402,11 @@ fun HomeScreen(
                             }
                         }
                     )
+                    if (forecastList.isEmpty()) {
+                        CircularProgressIndicator(
+                            color = animatedColor
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -484,7 +491,7 @@ fun HomeScreen(
                         title = "O₃", value = o3, unit = "ppb",
                         bubbleColor = Color(0xFFFFF3E0), textColor = Color(0xFFEF6C00),
                         size = 120.dp, initialAlign = BiasAlignment(-0.6f, 0.7f),
-                        moveRange = 30f, speedMillis = 4500,
+                        moveRange = 45f, speedMillis = 4500,
                         modifier = Modifier.zIndex(if (selectedBubble == "O₃") 1f else 0f),
                         onClick = { selectedBubble = "O₃" }
                     )

@@ -1,27 +1,33 @@
 package com.example.aircare
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.aircare.databinding.DialogAddNoteBinding
 import com.example.aircare.databinding.FragmentHistoryBinding
 import com.example.aircare.util.NotificationHelper
-import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.data.BarData
-import com.github.mikephil.charting.data.BarDataSet
-import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 class HistoryFragment : Fragment() {
 
@@ -32,12 +38,12 @@ class HistoryFragment : Fragment() {
     private val viewModel: HistoryViewModel by viewModels()
 
     private val userId = FirebaseAuth.getInstance().currentUser?.uid
-    private val database: DatabaseReference? =
-        userId?.let { FirebaseDatabase.getInstance().getReference("history").child(it) }
+    private val database: DatabaseReference?
+        get() = userId?.let { FirebaseDatabase.getInstance().getReference("history").child(it) }
 
     private var valueEventListener: ValueEventListener? = null
+    private var currentHeaderColor: Int = Color.parseColor("#4CAF50")
 
-    // SharedPreferences constants
     private val PREFS_NAME = "AirCarePrefs"
     private val NOTIFICATIONS_ENABLED = "notifications_enabled"
 
@@ -52,15 +58,41 @@ class HistoryFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        adapter = HistoryAdapter(list, { item -> deleteItem(item) }) { item ->
-            showAddNoteDialog(item)
-        }
-
+        adapter = HistoryAdapter(list, { deleteItem(it) }) { showAddNoteDialog(it) }
         binding.rvHistory.layoutManager = LinearLayoutManager(context)
         binding.rvHistory.adapter = adapter
 
-        setupBarChart(binding.barChart)
+        setupLineChart(binding.lineChart)
+
+        val marker = CustomMarkerView(requireContext(), R.layout.marker_view)
+        binding.lineChart.marker = marker
+
         listenToDatabase()
+    }
+
+    private fun getAqiColor(aqiStatus: String?): Int {
+        return when (aqiStatus) {
+            "Baik" -> Color.parseColor("#4CAF50")      // Green
+            "Sedang" -> Color.parseColor("#4CAF50")    // Green
+            "Tidak Sehat" -> Color.parseColor("#FF9800") // Orange
+            "Sangat Tidak Sehat" -> Color.parseColor("#F44336") // Red
+            "Berbahaya" -> Color.parseColor("#8E24AA")  // Purple
+            else -> Color.parseColor("#4CAF50") // Default color green
+        }
+    }
+
+    private fun updateHeaderColor(newColor: Int) {
+        if (binding.viewHeaderBackground.background !is GradientDrawable) return
+
+        val background = binding.viewHeaderBackground.background.mutate() as GradientDrawable
+
+        val colorAnimation = ValueAnimator.ofArgb(currentHeaderColor, newColor)
+        colorAnimation.duration = 500 // 0.5 seconds
+        colorAnimation.addUpdateListener { animator ->
+            background.setColor(animator.animatedValue as Int)
+        }
+        colorAnimation.start()
+        currentHeaderColor = newColor
     }
 
     private fun showAddNoteDialog(historyItem: HistoryItem) {
@@ -73,7 +105,7 @@ class HistoryFragment : Fragment() {
             "Lainnya" -> dialogBinding.chipGroupCategory.check(R.id.chipLainnya)
         }
 
-        val dialog = MaterialAlertDialogBuilder(requireContext())
+        MaterialAlertDialogBuilder(requireContext())
             .setView(dialogBinding.root)
             .setTitle("Catatan Pribadi")
             .setPositiveButton("Simpan") { _, _ ->
@@ -91,120 +123,155 @@ class HistoryFragment : Fragment() {
             }
             .setNegativeButton("Batal", null)
             .create()
-
-        dialog.show()
+            .show()
     }
 
-    private fun setupBarChart(barChart: BarChart) {
-        val entries = ArrayList<BarEntry>()
-        entries.add(BarEntry(0f, 35f))
-        entries.add(BarEntry(1f, 15f))
-        entries.add(BarEntry(2f, 25f))
-        entries.add(BarEntry(3f, 20f))
-        entries.add(BarEntry(4f, 10f))
+    private fun setupLineChart(lineChart: LineChart) {
+        lineChart.description.isEnabled = false
+        lineChart.setDrawGridBackground(false)
+        lineChart.legend.isEnabled = false
+        lineChart.isHighlightPerTapEnabled = true
 
-        val labels = arrayOf("PM2.5", "CO", "O3", "NO2", "SO2")
-        val dataSet = BarDataSet(entries, "Tingkat Polutan")
-        dataSet.colors = listOf(
-            Color.parseColor("#FFC107"),
-            Color.parseColor("#FF7043"),
-            Color.parseColor("#8D6E63"),
-            Color.parseColor("#78909C"),
-            Color.parseColor("#9CCC65")
-        )
-        dataSet.valueTextColor = Color.BLACK
-        dataSet.valueTextSize = 12f
-
-        val barData = BarData(dataSet)
-        barChart.data = barData
-        barChart.description.isEnabled = false
-        barChart.setDrawGridBackground(false)
-        barChart.setDrawBarShadow(false)
-        barChart.setFitBars(true)
-        barChart.legend.isEnabled = false
-
-        val xAxis = barChart.xAxis
+        val xAxis = lineChart.xAxis
         xAxis.position = XAxis.XAxisPosition.BOTTOM
         xAxis.setDrawGridLines(false)
         xAxis.granularity = 1f
-        xAxis.valueFormatter = IndexAxisValueFormatter(labels)
 
-        barChart.axisLeft.axisMinimum = 0f
-        barChart.axisRight.isEnabled = false
-        barChart.animateY(1000)
-        barChart.invalidate()
+        lineChart.axisLeft.axisMinimum = 0f
+        lineChart.axisRight.isEnabled = false
+        lineChart.animateX(1000)
+    }
+
+    private fun populateLineChart(historyItems: List<HistoryItem>, chartColor: Int) {
+        if (historyItems.isEmpty()) {
+            binding.lineChart.clear()
+            binding.lineChart.invalidate()
+            binding.lineChart.visibility = View.INVISIBLE
+            return
+        }
+
+        val sortedList = historyItems.sortedBy { it.timestamp }
+        val entries = ArrayList<Entry>()
+        val labels = ArrayList<String>()
+        val dateFormat = SimpleDateFormat("dd/MM", Locale.getDefault())
+
+        sortedList.forEachIndexed { index, item ->
+            val tempString = item.weatherTemp
+            val time = item.timestamp
+            if (tempString != null && time != null) {
+                val numericTempString = Regex("[-+]?[0-9]+([.,]?[0-9]+)?").find(tempString)?.value
+                if (numericTempString != null) {
+                    val parsableString = numericTempString.replace(',', '.')
+                    val tempFloat = parsableString.toFloatOrNull()
+                    if (tempFloat != null) {
+                        entries.add(Entry(index.toFloat(), tempFloat))
+                        labels.add(dateFormat.format(Date(time)))
+                    }
+                }
+            }
+        }
+
+        if (entries.isEmpty()) {
+            binding.lineChart.clear()
+            binding.lineChart.invalidate()
+            binding.lineChart.visibility = View.INVISIBLE
+            return
+        }
+
+        binding.lineChart.visibility = View.VISIBLE
+        binding.lineChart.xAxis.valueFormatter = IndexAxisValueFormatter(labels)
+
+        val dataSet = LineDataSet(entries, "Suhu")
+        dataSet.mode = LineDataSet.Mode.CUBIC_BEZIER
+        dataSet.setDrawValues(false)
+        dataSet.lineWidth = 2.5f
+        dataSet.setDrawCircleHole(false)
+        dataSet.circleRadius = 5f
+
+        // Dynamic coloring
+        dataSet.color = chartColor
+        dataSet.setCircleColor(chartColor)
+
+        // Dynamic gradient
+        val startColor = Color.argb(150, Color.red(chartColor), Color.green(chartColor), Color.blue(chartColor))
+        val gradient = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(startColor, Color.TRANSPARENT))
+        dataSet.fillDrawable = gradient
+        dataSet.setDrawFilled(true)
+
+        val lineData = LineData(dataSet)
+        binding.lineChart.data = lineData
+        binding.lineChart.invalidate()
     }
 
     private fun listenToDatabase() {
         if (database == null) {
-            _binding?.let {
-                it.tvEmptyHistory.text = "Anda belum login."
-                it.tvEmptyHistory.visibility = View.VISIBLE
-                it.rvHistory.visibility = View.GONE
-                it.cardChart.visibility = View.GONE
-            }
+            binding.tvEmptyHistory.text = "Anda belum login."
+            binding.tvEmptyHistory.visibility = View.VISIBLE
+            binding.rvHistory.visibility = View.GONE
+            binding.cardChart.visibility = View.GONE
             return
         }
+
+        binding.chartProgressBar.visibility = View.VISIBLE
+        binding.lineChart.visibility = View.INVISIBLE
 
         valueEventListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (_binding == null || !isAdded) return
 
+                binding.chartProgressBar.visibility = View.GONE
                 val tempList = mutableListOf<HistoryItem>()
-                for (data in snapshot.children) {
-                    data.getValue(HistoryItem::class.java)?.let { tempList.add(it) }
-                }
+                snapshot.children.mapNotNullTo(tempList) { it.getValue(HistoryItem::class.java) }
 
                 if (tempList.isEmpty()) {
-                    _binding?.apply {
-                        tvEmptyHistory.visibility = View.VISIBLE
-                        rvHistory.visibility = View.GONE
-                        cardChart.visibility = View.GONE
-                    }
+                    binding.tvEmptyHistory.visibility = View.VISIBLE
+                    binding.rvHistory.visibility = View.GONE
+                    binding.cardChart.visibility = View.GONE
                 } else {
-                    _binding?.apply {
-                        tvEmptyHistory.visibility = View.GONE
-                        rvHistory.visibility = View.VISIBLE
-                        cardChart.visibility = View.VISIBLE
-                        adapter.updateList(tempList.sortedByDescending { it.timestamp })
+                    binding.tvEmptyHistory.visibility = View.GONE
+                    binding.rvHistory.visibility = View.VISIBLE
+                    binding.cardChart.visibility = View.VISIBLE
+                    binding.lineChart.visibility = View.VISIBLE
+
+                    val sortedList = tempList.sortedByDescending { it.timestamp }
+                    adapter.updateList(sortedList)
+
+                    // Update colors based on the latest data
+                    sortedList.firstOrNull()?.let {
+                        Log.d("HistoryFragment", "Latest AQI Status from DB: ${it.aqiStatus}")
+                        val aqiColor = getAqiColor(it.aqiStatus)
+                        updateHeaderColor(aqiColor)
+                        populateLineChart(tempList, aqiColor)
                     }
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
                 if (_binding == null || !isAdded) return
-                _binding?.tvEmptyHistory?.apply {
-                    text = "Gagal memuat data: ${error.message}"
-                    visibility = View.VISIBLE
-                }
+                binding.chartProgressBar.visibility = View.GONE
+                binding.cardChart.visibility = View.GONE
+                binding.tvEmptyHistory.text = "Gagal memuat data: ${error.message}"
+                binding.tvEmptyHistory.visibility = View.VISIBLE
             }
         }
-
-        database.addValueEventListener(valueEventListener!!)
+        database?.addValueEventListener(valueEventListener!!)
     }
 
     private fun deleteItem(item: HistoryItem) {
-        database?.child(item.id ?: return)?.removeValue()
-            ?.addOnSuccessListener {
-                Toast.makeText(context, "Data berhasil dihapus", Toast.LENGTH_SHORT).show()
-
-                val sharedPreferences = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                val notificationsEnabled = sharedPreferences.getBoolean(NOTIFICATIONS_ENABLED, true)
-
-                if (notificationsEnabled) {
-                    NotificationHelper.showDeleteSuccessNotification(requireContext())
-                }
+        database?.child(item.id ?: return)?.removeValue()?.addOnSuccessListener {
+            Toast.makeText(context, "Data berhasil dihapus", Toast.LENGTH_SHORT).show()
+            val sharedPreferences = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (sharedPreferences.getBoolean(NOTIFICATIONS_ENABLED, true)) {
+                NotificationHelper.showDeleteSuccessNotification(requireContext())
             }
-            ?.addOnFailureListener {
-                Toast.makeText(context, "Gagal menghapus data", Toast.LENGTH_SHORT).show()
-            }
+        }?.addOnFailureListener {
+            Toast.makeText(context, "Gagal menghapus data", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        if (database != null && valueEventListener != null) {
-            database.removeEventListener(valueEventListener!!)
-        }
+        valueEventListener?.let { database?.removeEventListener(it) }
         valueEventListener = null
         _binding = null
     }
