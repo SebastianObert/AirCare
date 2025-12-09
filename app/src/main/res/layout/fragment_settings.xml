@@ -1,59 +1,101 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/settings_scroll"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="36dp"
+    android:fillViewport="true"
     tools:context=".ui.settings.SettingsFragment">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="16dp">
 
         <TextView
-            android:layout_width="match_parent"
+            android:id="@+id/tv_settings_title"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Pengaturan Aplikasi"
-            android:textStyle="bold"
-            android:textSize="20sp"
-            android:paddingBottom="16dp" />
+            android:text="Pengaturan"
+            android:textAppearance="?attr/textAppearanceHeadlineMedium"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"/>
 
-        <Switch
-            android:id="@+id/switch_notifications"
-            android:layout_width="match_parent"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_notification"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Aktifkan Notifikasi" />
+            android:layout_marginTop="24dp"
+            app:cardElevation="4dp"
+            app:layout_constraintTop_toBottomOf="@+id/tv_settings_title"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
 
-        <Button
-            android:id="@+id/btnPrivacyPolicy"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="Kebijakan Privasi"
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_notifications"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Aktifkan Notifikasi"
+                android:padding="16dp"/>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_about"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:backgroundTint="#6750A4"
-            android:textColor="@android:color/white" />
+            app:cardElevation="4dp"
+            app:layout_constraintTop_toBottomOf="@id/card_notification"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
 
-        <Button
-            android:id="@+id/btnAbout"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="Tentang Aplikasi"
-            android:layout_marginTop="8dp"
-            android:backgroundTint="#6750A4"
-            android:textColor="@android:color/white" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/btnPrivacyPolicy"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Kebijakan Privasi"
+                    android:padding="16dp"
+                    android:drawableStart="@drawable/ic_privacy_policy"
+                    android:drawablePadding="16dp"
+                    android:background="?attr/selectableItemBackground"/>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorOutline"/>
+
+                <TextView
+                    android:id="@+id/btnAbout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Tentang Aplikasi"
+                    android:padding="16dp"
+                    android:drawableStart="@drawable/ic_about"
+                    android:drawablePadding="16dp"
+                    android:background="?attr/selectableItemBackground"/>
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
 
         <Button
             android:id="@+id/btnLogout"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
             android:text="Logout"
-            android:textAllCaps="false"
-            android:backgroundTint="#D32F2F"
-            android:textColor="@android:color/white"
-            android:layout_marginTop="16dp" />
+            android:layout_marginTop="32dp"
+            app:layout_constraintTop_toBottomOf="@id/card_about"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:strokeColor="?attr/colorError"
+            android:textColor="?attr/colorError"/>
 
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>
