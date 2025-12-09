@@ -29,7 +29,8 @@ data class MainWeather(
     val temp: Double,
     val humidity: Int?,
     @SerializedName("temp_min") val tempMin: Double?,
-    @SerializedName("temp_max") val tempMax: Double?
+    @SerializedName("temp_max") val tempMax: Double?,
+    val pressure: Int?
 )
 
 // Data Classes for Geocoding

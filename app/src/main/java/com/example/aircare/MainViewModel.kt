@@ -21,7 +21,9 @@ data class DailyForecast(
     val description: String,
     val humidity: String,
     val windSpeed: String,
-    val precipitation: String
+    val precipitation: String,
+    val pressure: String,
+    val uvIndex: String
 )
 
 class MainViewModel : ViewModel() {
@@ -199,6 +201,8 @@ class MainViewModel : ViewModel() {
             val humidity = representativeItem.main.humidity?.toString() ?: "N/A"
             val windSpeed = representativeItem.wind.speed.toString()
             val precipitation = (representativeItem.pop * 100).toInt().toString()
+            val pressure = representativeItem.main.pressure?.toString() ?: "N/A"
+            val uvIndex = "N/A" // Placeholder
 
             DailyForecast(
                 day = dayName,
@@ -208,7 +212,9 @@ class MainViewModel : ViewModel() {
                 description = description,
                 humidity = "$humidity%",
                 windSpeed = "$windSpeed m/s",
-                precipitation = "$precipitation%"
+                precipitation = "$precipitation%",
+                pressure = "$pressure hPa",
+                uvIndex = uvIndex
             )
         }.take(5)
         _forecastData.value = dailyForecasts

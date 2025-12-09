@@ -96,10 +96,16 @@ fun HomeScreen(
 
     val scrollState = rememberScrollState()
     var showAqiGuide by remember { mutableStateOf(false) }
+    var selectedForecast by remember { mutableStateOf<DailyForecast?>(null) }
+
 
     if (showAqiGuide) {
         AqiScaleGuideDialog(onDismissRequest = { showAqiGuide = false })
     }
+    selectedForecast?.let { forecast ->
+        ForecastDetailDialog(forecast = forecast, onDismiss = { selectedForecast = null })
+    }
+
 
     Scaffold(
         containerColor = backgroundColor
@@ -356,6 +362,9 @@ fun HomeScreen(
                                 legend.horizontalAlignment = com.github.mikephil.charting.components.Legend.LegendHorizontalAlignment.RIGHT
                                 setTouchEnabled(true)
                                 setExtraOffsets(0f, 0f, 0f, 10f)
+
+                                val marker = CustomMarkerView(context, R.layout.marker_view)
+                                this.marker = marker
                             }
                         },
                         update = { chart ->
@@ -418,7 +427,11 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         items(forecastList) { forecast ->
-                            ForecastCard(forecast = forecast, tintColor = animatedColor)
+                            ForecastCard(
+                                forecast = forecast,
+                                tintColor = animatedColor,
+                                modifier = Modifier.clickable { selectedForecast = forecast }
+                            )
                         }
                     }
                 } else {
@@ -532,9 +545,9 @@ fun HomeScreen(
 //CUSTOM COMPONENTS
 
 @Composable
-fun ForecastCard(forecast: DailyForecast, tintColor: Color) {
+fun ForecastCard(forecast: DailyForecast, tintColor: Color, modifier: Modifier = Modifier) {
     Card(
-        modifier = Modifier.width(150.dp),
+        modifier = modifier.width(150.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -777,4 +790,104 @@ fun AqiScaleRow(color: Color, range: String, category: String) {
         )
         Text(category, style = MaterialTheme.typography.bodyMedium)
     }
+}
+
+@Composable
+fun ForecastDetailDialog(forecast: DailyForecast, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Detail Ramalan Cuaca",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = forecast.day,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.Gray
+                )
+            }
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                AsyncImage(
+                    model = forecast.iconUrl,
+                    contentDescription = "Weather Icon",
+                    modifier = Modifier.size(80.dp)
+                )
+
+                Text(
+                    text = forecast.description,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Max", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            text = forecast.tempMax,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFE53935)
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Min", style = MaterialTheme.typography.labelMedium)
+                        Text(
+                            text = forecast.tempMin,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E88E5)
+                        )
+                    }
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                // Detail Tambahan
+                ForecastDetailRow(
+                    iconRes = R.drawable.ic_humidity,
+                    value = "Kelembaban: ${forecast.humidity}",
+                    tint = Color.DarkGray
+                )
+                ForecastDetailRow(
+                    iconRes = R.drawable.ic_wind,
+                    value = "Kecepatan Angin: ${forecast.windSpeed}",
+                    tint = Color.DarkGray
+                )
+                ForecastDetailRow(
+                    iconRes = R.drawable.ic_precipitation,
+                    value = "Curah Hujan: ${forecast.precipitation}",
+                    tint = Color.DarkGray
+                )
+                ForecastDetailRow(
+                    iconRes = R.drawable.ic_pressure,
+                    value = "Tekanan: ${forecast.pressure}",
+                    tint = Color.DarkGray
+                )
+                ForecastDetailRow(
+                    iconRes = R.drawable.ic_uv,
+                    value = "Indeks UV: ${forecast.uvIndex}",
+                    tint = Color.DarkGray
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("TUTUP", fontWeight = FontWeight.Bold)
+            }
+        },
+        shape = RoundedCornerShape(24.dp)
+    )
 }
