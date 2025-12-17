@@ -16,7 +16,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import com.example.aircare.util.NotificationHelper
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -26,7 +26,7 @@ import java.util.*
 
 class HomeFragment : Fragment() {
 
-    private val mainViewModel: MainViewModel by viewModels()
+    private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     private val PREFS_NAME = "AirCarePrefs"
@@ -67,6 +67,10 @@ class HomeFragment : Fragment() {
                         },
                         onInboxClick = {
                             findNavController().navigate(R.id.action_homeFragment_to_inboxFragment)
+                        },
+                        // Implementasi klik tombol prediksi
+                        onCheckPredictionClick = {
+                            (requireActivity() as? MainActivity)?.tryToMakePrediction()
                         }
                     )
                 }
@@ -78,6 +82,7 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+
         // Create notification channel on view creation
         NotificationHelper.createNotificationChannel(requireContext())
         setupObservers()

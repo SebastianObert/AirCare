@@ -1,82 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:gravity="center_horizontal"
-    android:orientation="vertical"
-    android:padding="32dp"
-    android:background="?attr/colorSurface">
+    android:layout_height="match_parent">
 
-    <ImageView
-        android:id="@+id/iv_login_logo"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
-        android:layout_marginBottom="24dp"
-        android:contentDescription="Logo Aplikasi"
-        android:src="@drawable/aircare" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="32dp"
-        android:text="Buat Akun Baru"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:textColor="?attr/colorPrimary"/>
-
-    <EditText
-        android:id="@+id/etName"
+    <com.example.aircare.AnimatedBackgroundView
         android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:layout_marginBottom="12dp"
-        android:background="@android:drawable/edit_text"
-        android:hint="Nama Lengkap"
-        android:inputType="textPersonName"
-        android:padding="12dp" />
+        android:layout_height="match_parent" />
 
-    <EditText
-        android:id="@+id/etEmail"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:layout_marginBottom="12dp"
-        android:background="@android:drawable/edit_text"
-        android:autofillHints="emailAddress"
-        android:hint="Email"
-        android:inputType="textEmailAddress"
-        android:padding="12dp" />
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="32dp">
 
-    <EditText
-        android:id="@+id/etPassword"
-        android:layout_width="match_parent"
-        android:layout_height="50dp"
-        android:layout_marginTop="8dp"
-        android:background="@android:drawable/edit_text"
-        android:autofillHints="newPassword"
-        android:hint="Password"
-        android:inputType="textPassword"
-        android:padding="12dp" />
+        <ImageView
+            android:id="@+id/iv_login_logo"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:layout_marginBottom="24dp"
+            android:contentDescription="Logo Aplikasi"
+            android:src="@drawable/aircare" />
 
-    <Button
-        android:id="@+id/btnSignup"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="Daftar Sekarang" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp"
+            android:text="Buat Akun Baru"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorPrimary"/>
 
-    <TextView
-        android:id="@+id/tvGoToLogin"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:padding="8dp"
-        android:text="Sudah punya akun? Login di sini"
-        android:textColor="?attr/colorPrimary" />
+        <EditText
+            android:id="@+id/etName"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginBottom="12dp"
+            android:background="@android:drawable/edit_text"
+            android:hint="Nama Lengkap"
+            android:inputType="textPersonName"
+            android:padding="12dp" />
 
-    <ProgressBar
-        android:id="@+id/progressBar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:visibility="gone" />
+        <EditText
+            android:id="@+id/etEmail"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginBottom="12dp"
+            android:background="@android:drawable/edit_text"
+            android:autofillHints="emailAddress"
+            android:hint="Email"
+            android:inputType="textEmailAddress"
+            android:padding="12dp" />
 
-</LinearLayout>
+        <EditText
+            android:id="@+id/etPassword"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="8dp"
+            android:background="@android:drawable/edit_text"
+            android:autofillHints="newPassword"
+            android:hint="Password"
+            android:inputType="textPassword"
+            android:padding="12dp" />
+
+        <Button
+            android:id="@+id/btnSignup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="Daftar Sekarang" />
+
+        <TextView
+            android:id="@+id/tvGoToLogin"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:padding="8dp"
+            android:text="Sudah punya akun? Login di sini"
+            android:textColor="?attr/colorPrimary" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+</FrameLayout>

@@ -3,6 +3,7 @@ package com.example.aircare
 import android.graphics.Color as AndroidColor
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -63,7 +64,8 @@ fun HomeScreen(
     onChangeLocationClick: () -> Unit,
     onSaveClick: () -> Unit,
     onRefreshLocationClick: () -> Unit,
-    onInboxClick: () -> Unit
+    onInboxClick: () -> Unit,
+    onCheckPredictionClick: () -> Unit // Parameter baru
 ) {
     // State Observation
     val location by viewModel.location.observeAsState("Memuat...")
@@ -520,6 +522,24 @@ fun HomeScreen(
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
+
+                 // --- Tombol Prediksi Kesehatan ---
+                OutlinedButton(
+                    onClick = onCheckPredictionClick, // Menggunakan lambda
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(2.dp, animatedColor),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = animatedColor)
+                ) {
+                    Icon(Icons.Rounded.Info, contentDescription = null, modifier = Modifier.size(24.dp))
+
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Cek Prediksi Kesehatan", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // --- Save Button ---
                 Button(

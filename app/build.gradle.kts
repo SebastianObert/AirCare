@@ -18,11 +18,6 @@ android {
     if (propertiesFile.exists()) {
         properties.load(FileInputStream(propertiesFile))
     }
-    val localProperties = Properties()
-    val localPropertiesFile = rootProject.file("local.properties")
-    if (localPropertiesFile.exists()) {
-        localProperties.load(FileInputStream(localPropertiesFile))
-    }
 
     defaultConfig {
         applicationId = "com.example.aircare"
@@ -33,9 +28,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Ambil API key dari local.properties
+        // Ambil API key dari gradle.properties
         manifestPlaceholders["MAPS_API_KEY"] =
-            localProperties.getProperty("MAPS_API_KEY", "")
+            properties.getProperty("MAPS_API_KEY", "")
 
         // Ambil API key dari gradle.properties
         buildConfigField("String", "WEATHER_API_KEY", properties.getProperty("WEATHER_API_KEY", ""))
@@ -65,6 +60,15 @@ android {
         buildConfig = true
         compose = true
     }
+
+    aaptOptions {
+        noCompress("tflite")
+    }
+    
+    packagingOptions {
+        resources.excludes.add("META-INF/LICENSE.txt")
+        resources.excludes.add("META-INF/NOTICE.txt")
+    }
 }
 
 dependencies {
@@ -84,8 +88,6 @@ dependencies {
     implementation(libs.firebase.storage)
 
     // Navigation
-    implementation(libs.androidx.navigation.fragment.ktx)
-    implementation(libs.androidx.navigation.ui.ktx)
     implementation("androidx.navigation:navigation-fragment-ktx:2.7.7")
     implementation("androidx.navigation:navigation-ui-ktx:2.7.7")
 
@@ -131,6 +133,12 @@ dependencies {
 
     // Pengganti Glide untuk Compose
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // TensorFlow Lite (Stable Combination)
+    implementation("org.tensorflow:tensorflow-lite:2.12.0")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.3")
+
+    implementation("androidx.compose.material:material-icons-extended")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
